@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "archimedes",
-    "slug": "archimedes",
+    "name": "Habitat",
+    "slug": "habitat",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

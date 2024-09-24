@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pressable, StyleSheet, ScrollView, Text, View, Button, Modal, TextInput, Alert } from 'react-native';
+import { Pressable, StyleSheet, ScrollView, Text, View, Image, Button, Modal, TextInput, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ToDo() {
@@ -78,16 +78,17 @@ export default function ToDo() {
       </View>
 
       <View style={styles.buttonview}>
-        <Button title="Hinzufügen" onPress={() => setModalVisible(true)} />
+        <Button title="Hinzufügen" onPress={() => setModalVisible(true)} color="#a065ec"/>
       </View>
 
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalView}>
+          <Image style={styles.image} source={require('../assets/daily-planning.png')} />
           <TextInput
             style={styles.input}
             placeholder="Neuer To-Do-Punkt"
@@ -95,8 +96,8 @@ export default function ToDo() {
             onChangeText={setTextInputValue}
           />
           <View style={styles.buttonContainer}>
-            <Button title="Abbrechen" onPress={() => setModalVisible(false)} />
-            <Button title="Speichern" onPress={addTodoItem} />
+            <Button title="Abbrechen" onPress={() => setModalVisible(false)} color="#f31282"/>
+            <Button title="Speichern" onPress={addTodoItem} color="#b180f0" />
           </View>
         </View>
       </Modal>
@@ -109,22 +110,32 @@ const styles = StyleSheet.create({
       flex: 1,
       justifyContent: 'center',
       padding: 20,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#311b6b',
     },
     scrollview: {
       flex: 1,
     },
+    image: {
+      width: 150,
+      height: 150,
+      marginBottom: 64,
+    },
     text: {
       fontSize: 18,
       padding: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: '#ccc',
-      color: '#000000',
+      borderWidth: 1,
+      borderColor: '#e4d0ff',
+      backgroundColor: '#e4d0ff',
+      borderRadius: 6,  
+      color: '#1e085a',
       fontWeight: 'bold',
+      marginBottom: 8,
     },
     strikethrough: {
       textDecorationLine: 'line-through',
-      color: '#058e17',
+      color: '#e4d0ff',
+      fontWeight: 'normal',
+      backgroundColor: '#1e085a',
     },
     buttonview: {
       padding: 10,
@@ -133,21 +144,22 @@ const styles = StyleSheet.create({
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: '#1e085a',
     },
     input: {
-      height: 40,
-      width: '80%',
-      borderColor: 'gray',
+      borderRadius: 6,
       borderWidth: 1,
-      paddingLeft: 10,
-      marginBottom: 20,
-      backgroundColor: '#ffffff',
+      borderColor: '#e4d0ff',
+      backgroundColor: '#e4d0ff',
+      color: '#120438',
+      padding: 16,
+      width: '70%',
     },
     buttonContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      width: '80%',
-      margin: 20,
+      alignContent: 'center',
+      width: '70%',
+      margin: 32,
     },
   });

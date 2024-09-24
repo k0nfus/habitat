@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo
+.expo/
+.expo-shared/
+
+# Logs
+*.log
+*.tlog
+*.log.[0-9]*
+*.out
+
+# Packager files
+*.jsbundle
+*.map
+
+# Expo cache & other files
+dist/
+tmp/
+ios/
+android/
+web-build/
+.idea/
+.vscode/
+
+# TypeScript
+*.tsbuildinfo
+
+# Other
+.env
+package-lock.json

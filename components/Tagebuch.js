@@ -129,8 +129,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#311b6b',
     width: '100%',
+    padding: 20,
   },
   contentview: {
+    marginTop: 40,
     flex: 7,
     width: '100%',
   },

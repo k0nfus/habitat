@@ -114,6 +114,7 @@ const styles = StyleSheet.create({
     },
     scrollview: {
       flex: 1,
+      marginTop: 40,
     },
     image: {
       width: 150,

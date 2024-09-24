@@ -36,3 +36,4 @@ web-build/
 # Other
 .env
 package-lock.json
+eas.json

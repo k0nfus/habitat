@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ToDo from './components/To-Do'; 
 import Tagebuch from './components/Tagebuch'; 
+import Finanzen from './components/Finanzen'; 
 import { Ionicons } from '@expo/vector-icons'; 
 import { StatusBar } from 'expo-status-bar'; 
 
@@ -22,6 +23,8 @@ export default function App() {
                   iconName = 'checkmark-done-outline'; 
                 } else if (route.name === 'Tagebuch') {
                   iconName = 'book-outline'; 
+                } else if (route.name === 'Finanzen') {
+                  iconName = 'bar-chart-outline'; 
                 }
                 return <Ionicons name={iconName} size={size} color={color} />;
               },
@@ -35,6 +38,7 @@ export default function App() {
           >
             <Tab.Screen name="To-Do" component={ToDo} />
             <Tab.Screen name="Tagebuch" component={Tagebuch} />
+            <Tab.Screen name="Finanzen" component={Finanzen} />
           </Tab.Navigator>
         </NavigationContainer>
     </>

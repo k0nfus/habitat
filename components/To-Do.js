@@ -129,14 +129,12 @@ const styles = StyleSheet.create({
       backgroundColor: '#e4d0ff',
       borderRadius: 6,  
       color: '#1e085a',
-      fontWeight: 'bold',
       marginBottom: 8,
     },
     strikethrough: {
       textDecorationLine: 'line-through',
       color: '#e4d0ff',
-      fontWeight: 'normal',
-      backgroundColor: '#1e085a',
+      backgroundColor: '#3d3553',
     },
     buttonview: {
       padding: 10,

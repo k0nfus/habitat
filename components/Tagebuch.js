@@ -88,7 +88,6 @@ export default function Tagebuch() {
       style={styles.eintragcontainer}
     >
       <Text style={styles.eintragtext}>{item.date}</Text>
-      <Text>{item.text.length > 20 ? item.text.substring(0, 20) + '...' : item.text}</Text>
     </Pressable>
   );
 
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
   eintragtext: {
     color: '#1e085a',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
   buttonview: {
     flex: 1,

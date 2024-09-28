@@ -76,10 +76,17 @@ export default function Tagebuch() {
   };
 
   const deleteEntry = (id) => {
-    const updatedEntries = entries.filter(entry => entry.id !== id);
-    setEntries(updatedEntries);
-    saveEntries(updatedEntries);
-  };
+    Alert.alert('Eintrag löschen', 'Möchtest du diesen Eintrag wirklich löschen?', [
+      { text: 'Abbrechen', style: 'cancel' },
+      {
+        text: 'Löschen',
+        onPress: () => {
+          const updatedEntries = entries.filter(entry => entry.id !== id);
+          setEntries(updatedEntries);
+          saveEntries(updatedEntries);
+        },
+      },
+    ])}
 
   const renderItem = ({ item }) => (
     <Pressable

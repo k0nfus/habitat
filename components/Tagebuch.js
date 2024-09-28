@@ -7,10 +7,10 @@ export default function Tagebuch() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentEntry, setCurrentEntry] = useState(null);
   const [textInputValue, setTextInputValue] = useState(
-    "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n"
+    "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nTagesfokus:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n"
   );
 
-  const templateText = "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n";
+  const templateText = "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nTagesfokus:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n";
 
   useEffect(() => {
     loadEntries();

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, Modal, TextInput, FlatList, Pressable, Alert } from 'react-native';
+import { Text, View, Button, Modal, StyleSheet, TextInput, FlatList, Pressable, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Tagebuch() {
   const [entries, setEntries] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentEntry, setCurrentEntry] = useState(null);
-  const [textInputValue, setTextInputValue] = useState('');
+  const [textInputValue, setTextInputValue] = useState(
+    "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n"
+  );
+
+  const templateText = "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n";
 
   useEffect(() => {
     loadEntries();
@@ -31,13 +35,20 @@ export default function Tagebuch() {
     }
   };
 
+  const handleNewEntry = () => {
+    setTextInputValue(templateText);
+    setCurrentEntry(null);
+    setModalVisible(true);
+  };
+
   const addEntry = () => {
     if (textInputValue.trim()) {
       const newEntry = { id: Date.now().toString(), text: textInputValue, date: new Date().toLocaleDateString() };
-      const updatedEntries = [newEntry, ...entries];  // Hinzufügen des neuen Eintrags
+      const updatedEntries = [newEntry, ...entries];
       setEntries(updatedEntries);
       saveEntries(updatedEntries);
-      setTextInputValue('');
+
+      setTextInputValue(templateText);
       setModalVisible(false);
     } else {
       Alert.alert('Eingabefehler', 'Bitte einen gültigen Eintrag hinzufügen.');
@@ -88,15 +99,15 @@ export default function Tagebuch() {
           data={entries}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          numColumns={2}  // Zeigt 3 Elemente pro Zeile an
+          numColumns={2}
           columnWrapperStyle={styles.row}
         />
       </View>
       <View style={styles.buttonview}>
-        <Button title="Neuer Eintrag" color="#a065ec" onPress={() => setModalVisible(true)} />
+        <Button title="Neuer Eintrag" color="#a065ec" onPress={handleNewEntry} />
       </View>
 
-      {/* Modal für neuen Eintrag */}
+      {/* Modal für neuen oder bearbeiteten Eintrag */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -121,6 +132,7 @@ export default function Tagebuch() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   main: {
@@ -153,6 +165,7 @@ const styles = StyleSheet.create({
   eintragtext: {
     color: '#1e085a',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   buttonview: {
     flex: 1,

@@ -26,7 +26,7 @@ export default function App() {
                   iconName = 'book-outline'; 
                 } else if (route.name === 'Finanzen') {
                   iconName = 'bar-chart-outline'; 
-                } else if (TabRouter.name === 'Einstellungen') {
+                } else if (route.name === 'Einstellungen') {
                   iconName = 'settings-outline'; 
                 }
 

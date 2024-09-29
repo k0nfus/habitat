@@ -117,7 +117,7 @@ export default function Finanzen() {
         onPress={() => setModalVisible(true)}
         style={({ pressed }) => [styles.buttonViewNewMonth, pressed ? styles.buttonPressed : null]}
       >
-        <Text style={styles.buttonTextNewMonth}>EINTRAG HINZUFÜGEN</Text>
+        <Text style={styles.buttonTextNewMonth}>HINZUFÜGEN</Text>
       </Pressable>
 
       <Modal animationType="slide" transparent={false} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>

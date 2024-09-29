@@ -7,10 +7,10 @@ export default function Tagebuch() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentEntry, setCurrentEntry] = useState(null);
   const [textInputValue, setTextInputValue] = useState(
-    "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nTagesfokus:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n"
+    "Ich bin dankbar für...\n\n\n\nDarauf freue ich mich besonders:\n\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\n\nPositive Selbstbekräftigung:\n\n\n\nTagesfokus:\n\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\n\nWas hat mir heute Energie geraubt?\n\n\n\nWas werde ich morgen anders machen?\n\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\n\nZitat des Tages:\n\n"
   );
 
-  const templateText = "Ich bin dankbar für...\n\n\nDarauf freue ich mich besonders:\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\nPositive Selbstbekräftigung:\n\n\nTagesfokus:\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\nWas hat mir heute Energie geraubt?\n\n\nWas werde ich morgen anders machen?\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\nZitat des Tages:\n";
+  const templateText = "Ich bin dankbar für...\n\n\n\nDarauf freue ich mich besonders:\n\n\n\nDas habe ich mir gestern vorgenommen heute anders zu machen:\n\n\n\nPositive Selbstbekräftigung:\n\n\n\nTagesfokus:\n\n\n\nWas habe ich heute Gutes für jemanden getan?\n\n\n\nWas hat mir heute Energie geraubt?\n\n\n\nWas werde ich morgen anders machen?\n\n\n\nTolle Dinge, die ich heute erlebt habe:\n\n\n\nZitat des Tages:\n\n";
 
   useEffect(() => {
     loadEntries();
@@ -110,7 +110,7 @@ export default function Tagebuch() {
         />
       </View>
       <View style={styles.buttonview}>
-        <Button title="Neuer Eintrag" color="#a065ec" onPress={handleNewEntry} />
+        <Button title="Hinzufügen" color="#a065ec" onPress={handleNewEntry} />
       </View>
 
       {/* Modal für neuen oder bearbeiteten Eintrag */}

@@ -18,6 +18,7 @@ export default function App() {
           <Tab.Navigator
             initialRouteName="Tagebuch"
             screenOptions={({ route }) => ({
+              tabBarShowLabel: false,
               tabBarIcon: ({ color, size }) => {
                 let iconName;
                 if (route.name === 'To-Do') {

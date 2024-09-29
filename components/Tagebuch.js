@@ -43,7 +43,7 @@ export default function Tagebuch() {
 
   const addEntry = () => {
     if (textInputValue.trim()) {
-      const newEntry = { id: Date.now().toString(), text: textInputValue, date: new Date().toLocaleDateString() };
+      const newEntry = { id: Date.now().toString(), text: textInputValue, date: new Date() }; // Date wird als Objekt gespeichert
       const updatedEntries = [newEntry, ...entries];
       setEntries(updatedEntries);
       saveEntries(updatedEntries);
@@ -88,13 +88,45 @@ export default function Tagebuch() {
       },
     ])}
 
+  const getDayStyle = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDay(); // 0 (Sonntag) bis 6 (Samstag)
+
+    switch (day) {
+      case 1: // Montag
+        return { backgroundColor: '#FFD700' }; // Dunkles Gelb
+      case 2: // Dienstag
+        return { backgroundColor: '#FFA500' }; // Orange
+      case 3: // Mittwoch
+        return { backgroundColor: '#8B0000' }; // Weinrot
+      case 4: // Donnerstag
+        return { backgroundColor: '#4B0082' }; // Dunkles Lila
+      case 5: // Freitag
+        return { backgroundColor: '#40E0D0', color: 'black' }; // Türkis mit schwarzer Schrift
+      case 6: // Samstag
+        return { backgroundColor: '#006400' }; // Dunkelgrün
+      case 0: // Sonntag
+        return { backgroundColor: '#90EE90', color: 'black' }; // Hellgrün mit schwarzer Schrift
+      default:
+        return { backgroundColor: '#e4d0ff' }; // Standard
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const dayOfWeek = date.toLocaleDateString('de-DE', { weekday: 'short' }).substring(0, 2).toUpperCase();
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${dayOfWeek}\n${day}.${month}.`;
+  };
+
   const renderItem = ({ item }) => (
     <Pressable
       onPress={() => editEntry(item.id)}
       onLongPress={() => deleteEntry(item.id)}
-      style={styles.eintragcontainer}
+      style={[styles.eintragcontainer, getDayStyle(item.date)]}
     >
-      <Text style={styles.eintragtext}>{item.date}</Text>
+      <Text style={[styles.eintragtext, getDayStyle(item.date)]}>{formatDate(item.date)}</Text>
     </Pressable>
   );
 
@@ -105,7 +137,7 @@ export default function Tagebuch() {
           data={entries}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={3}
           columnWrapperStyle={styles.row}
         />
       </View>
@@ -160,17 +192,17 @@ const styles = StyleSheet.create({
   eintragcontainer: {
     margin: 8,
     padding: 8,
-    width: '40%',
     height: 100,
+    width: 100,
     borderColor: '#e4d0ff',
-    backgroundColor: '#e4d0ff',
-    borderRadius: 6,
+    borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 5,
   },
   eintragtext: {
-    color: '#1e085a',
     fontWeight: 'bold',
+    textAlign: 'center',
     fontSize: 18,
   },
   buttonview: {

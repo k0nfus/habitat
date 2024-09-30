@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, FlatList, TextInput, Button, Image, Alert } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, FlatList, TextInput, Button, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Finanzen() {
@@ -13,13 +13,36 @@ export default function Finanzen() {
 
   useEffect(() => {
     ladeDaten();
+    setDatum(formatDatum());  // Setzt das Datum standardmäßig beim Laden
   }, []);
+
+  const formatDatum = (eingabeDatum = '') => {
+    let datumObj = new Date();
+
+    // Wenn eine Eingabe vorhanden ist, versuchen wir sie in ein Datum zu konvertieren
+    if (eingabeDatum) {
+      const [tag, monat, jahr] = eingabeDatum.split('.').map((val) => parseInt(val, 10));
+
+      // Überprüfen, ob die Eingabe gültig ist, und ein korrektes Datum erstellen
+      if (!isNaN(tag) && !isNaN(monat) && !isNaN(jahr)) {
+        datumObj = new Date(jahr, monat - 1, tag);
+      }
+    }
+
+    // Formatierung sicherstellen: TT.MM.JJJJ
+    const tag = String(datumObj.getDate()).padStart(2, '0');
+    const monat = String(datumObj.getMonth() + 1).padStart(2, '0');
+    const jahr = datumObj.getFullYear();
+
+    return `${tag}.${monat}.${jahr}`;
+  };
 
   const ladeDaten = async () => {
     try {
       const daten = await AsyncStorage.getItem('finDaten');
       if (daten !== null) {
-        setMonatDaten(JSON.parse(daten));
+        const sortierteDaten = JSON.parse(daten).sort((a, b) => new Date(b.datum) - new Date(a.datum));
+        setMonatDaten(sortierteDaten);
       }
     } catch (error) {
       console.log(error);
@@ -37,14 +60,14 @@ export default function Finanzen() {
   const neuenEintragHinzufuegen = () => {
     const neuerEintrag = {
       id: Date.now().toString(),
-      datum,
+      datum: formatDatum(datum),  // Datum formatieren
       info,
       betrag: parseFloat(betrag),
     };
-    const neueDaten = [...monatDaten, neuerEintrag];
+    const neueDaten = [...monatDaten, neuerEintrag].sort((a, b) => new Date(b.datum) - new Date(a.datum));
     setMonatDaten(neueDaten);
     speicherDaten(neueDaten);
-    setDatum('');
+    setDatum(formatDatum());  // Nach dem Hinzufügen wird das Datum wieder auf den aktuellen Tag gesetzt
     setInfo('');
     setBetrag('');
     setModalVisible(false);
@@ -52,7 +75,7 @@ export default function Finanzen() {
 
   const eintragBearbeiten = (eintrag) => {
     setBearbeiteEintrag(eintrag);
-    setDatum(eintrag.datum);
+    setDatum(formatDatum(eintrag.datum));  // Datum formatieren
     setInfo(eintrag.info);
     setBetrag(eintrag.betrag.toString());
     setModalVisible(true);
@@ -60,8 +83,10 @@ export default function Finanzen() {
 
   const eintragSpeichern = () => {
     const neueDaten = monatDaten.map((item) =>
-      item.id === bearbeiteEintrag.id ? { ...item, datum, info, betrag: parseFloat(betrag) } : item
-    );
+      item.id === bearbeiteEintrag.id
+        ? { ...item, datum: formatDatum(datum), info, betrag: parseFloat(betrag) }
+        : item
+    ).sort((a, b) => new Date(b.datum) - new Date(a.datum));
     setMonatDaten(neueDaten);
     speicherDaten(neueDaten);
     setBearbeiteEintrag(null);
@@ -75,7 +100,7 @@ export default function Finanzen() {
         text: 'Löschen',
         onPress: () => {
           const neueDaten = monatDaten.filter((item) => item.id !== id);
-          setMonatDaten(neueDaten);
+          setMonatDaten(neueDaten.sort((a, b) => new Date(b.datum) - new Date(a.datum)));
           speicherDaten(neueDaten);
         },
       },
@@ -88,65 +113,70 @@ export default function Finanzen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.textHeader}>{monatName || 'Budget'}</Text>
-      <FlatList
-        data={monatDaten}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => eintragBearbeiten(item)}
-            onLongPress={() => eintragLoeschen(item.id)}
-            style={styles.monatTable}
-          >
-            <Text style={styles.textHeader2}>{item.datum}</Text>
-            <Text style={styles.textHeader2}>{item.info}</Text>
-            <Text style={item.betrag >= 0 ? styles.textBetrag : styles.textBetragAbgang}>
-              {item.betrag.toFixed(2)} €
-            </Text>
-          </Pressable>
-        )}
-        ListFooterComponent={
-          <View style={styles.monatTable}>
-            <Text style={styles.textHeader}>Summe</Text>
-            <Text style={styles.textHeader}>{berechneSumme()} €</Text>
-          </View>
-        }
-      />
+      <View style={styles.container2}>
+        <Text style={styles.textHeader}>{monatName || 'Budget'}</Text>
+        <FlatList
+          data={monatDaten}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => eintragBearbeiten(item)}
+              onLongPress={() => eintragLoeschen(item.id)}
+              style={styles.monatTable}
+            >
+              <Text style={styles.textHeader2}>{item.datum}</Text>
+              <Text style={styles.textHeader3}>{item.info}</Text>
+              <Text style={item.betrag >= 0 ? styles.textBetrag : styles.textBetragAbgang}>
+                {item.betrag.toFixed(2)} €
+              </Text>
+            </Pressable>
+          )}
+          ListHeaderComponent={
+            <View style={styles.monatTable}>
+              <Text style={styles.textHeader}>Aktueller Stand:</Text>
+              <Text style={styles.textHeader}>{berechneSumme()} €</Text>
+            </View>
+          }
+        />
 
-      <Pressable
-        onPress={() => setModalVisible(true)}
-        style={({ pressed }) => [styles.buttonViewNewMonth, pressed ? styles.buttonPressed : null]}
-      >
-        <Text style={styles.buttonTextNewMonth}>HINZUFÜGEN</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => {
+            setDatum(formatDatum());  // Datum setzen, wenn das Modal geöffnet wird
+            setModalVisible(true);
+          }}
+          style={({ pressed }) => [styles.buttonViewNewMonth, pressed ? styles.buttonPressed : null]}
+        >
+          <Text style={styles.buttonTextNewMonth}>HINZUFÜGEN</Text>
+        </Pressable>
 
-      <Modal animationType="slide" transparent={false} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalView}>
-          <TextInput
-            style={styles.input}
-            placeholder="Datum"
-            value={datum}
-            onChangeText={(text) => setDatum(text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Info"
-            value={info}
-            onChangeText={(text) => setInfo(text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Betrag"
-            value={betrag}
-            onChangeText={(text) => setBetrag(text)}
-            keyboardType="number-pad"
-          />
-          <View style={styles.buttonContainer}>
-            <Button title="Abbrechen" onPress={() => setModalVisible(false)} color="#f31282" />
-            <Button title={bearbeiteEintrag ? 'Speichern' : 'Hinzufügen'} onPress={bearbeiteEintrag ? eintragSpeichern : neuenEintragHinzufuegen} color="#b180f0" />
+        <Modal animationType="slide" transparent={false} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+          <View style={styles.modalView}>
+            <TextInput
+              style={styles.input}
+              placeholder="Datum"
+              value={datum}
+              onChangeText={(text) => setDatum(formatDatum(text))}  // Datum beim Eingeben formatieren
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Info"
+              value={info}
+              onChangeText={(text) => setInfo(text)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Betrag"
+              value={betrag}
+              onChangeText={(text) => setBetrag(text)}
+              keyboardType="numeric"
+            />
+            <View style={styles.buttonContainer}>
+              <Button title="Abbrechen" onPress={() => setModalVisible(false)} color="#f31282" />
+              <Button title={bearbeiteEintrag ? 'Speichern' : 'Hinzufügen'} onPress={bearbeiteEintrag ? eintragSpeichern : neuenEintragHinzufuegen} color="#b180f0" />
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </View>
     </View>
   );
 }
@@ -157,11 +187,14 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#311b6b',
   },
+  container2: {
+    marginTop: 40,
+    marginBottom: 40,
+  },
   textHeader: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
     color: '#fff',
   },
   monatTable: {
@@ -170,22 +203,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#a065ec',
-    marginBottom: 10,
+    marginBottom: 8,
     borderRadius: 6,
   },
   textHeader2: {
-    color: '#311b6b',
-    fontSize: 16,
+    color: '#000000',
+    fontSize: 14,
     textAlign: 'center',
   },
+  textHeader3: {
+    color: '#000000',
+    fontSize: 14,
+    textAlign: 'left',
+  },
   textBetrag: {
-    color: '#311b6b',
-    fontSize: 16,
+    color: '#295519',
+    fontSize: 14,
     textAlign: 'right',
   },
   textBetragAbgang: {
     color: '#6b1b3b',
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'right',
   },
   buttonViewNewMonth: {

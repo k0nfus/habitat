@@ -168,7 +168,7 @@ export default function Finanzen() {
               placeholder="Betrag"
               value={betrag}
               onChangeText={(text) => setBetrag(text)}
-              keyboardType="numeric"
+              keyboardType="default"
             />
             <View style={styles.buttonContainer}>
               <Button title="Abbrechen" onPress={() => setModalVisible(false)} color="#f31282" />

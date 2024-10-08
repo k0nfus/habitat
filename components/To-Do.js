@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Pressable, StyleSheet, ScrollView, Text, View, Image, Button, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Pressable, StyleSheet, ScrollView, Text, View, Modal, TextInput, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ToDo() {
   const [modalVisible, setModalVisible] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [todoList, setTodoList] = useState([]);
+  const [habits, setHabits] = useState([]);
 
-  useEffect(() => {
-    loadTodoList();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadHabits();
+      loadTodoList();
+    }, [])
+  );
 
   const loadTodoList = async () => {
     try {
@@ -22,11 +28,36 @@ export default function ToDo() {
     }
   };
 
+  const loadHabits = async () => {
+    try {
+      const savedHabits = await AsyncStorage.getItem('habits');
+      if (savedHabits) {
+        const parsedHabits = JSON.parse(savedHabits)
+          .filter(habit => habit.trim() !== '') // Nur nicht-leere Habits laden
+          .map(habit => ({
+            text: habit,
+            completed: false,
+          }));
+        setHabits(parsedHabits);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Habits', error);
+    }
+  };
+
   const saveTodoList = async (list) => {
     try {
       await AsyncStorage.setItem('todoList', JSON.stringify(list));
     } catch (error) {
       console.error('Fehler beim Speichern der To-Do-Liste', error);
+    }
+  };
+
+  const saveHabits = async (updatedHabits) => {
+    try {
+      await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits.map(habit => habit.text)));
+    } catch (error) {
+      console.error('Fehler beim Speichern der Habits', error);
     }
   };
 
@@ -42,32 +73,68 @@ export default function ToDo() {
     }
   };
 
-  const toggleCompletion = (index) => {
-    const updatedList = todoList.map((item, i) => {
-      if (i === index) {
-        return { ...item, completed: !item.completed };
-      }
-      return item;
-    });
-    setTodoList(updatedList);
-    saveTodoList(updatedList);
+  const toggleCompletion = (index, isHabit = false) => {
+    if (isHabit) {
+      const updatedHabits = habits.map((habit, i) => {
+        if (i === index) {
+          return { ...habit, completed: !habit.completed };
+        }
+        return habit;
+      });
+      setHabits(updatedHabits);
+      saveHabits(updatedHabits);
+    } else {
+      const updatedList = todoList.map((item, i) => {
+        if (i === index) {
+          return { ...item, completed: !item.completed };
+        }
+        return item;
+      });
+      setTodoList(updatedList);
+      saveTodoList(updatedList);
+    }
   };
 
   const deleteTodoItem = (index) => {
-    const updatedList = todoList.filter((_, i) => i !== index);
-    setTodoList(updatedList);
-    saveTodoList(updatedList);
+    Alert.alert(
+      'Eintrag löschen',
+      'Möchtest du diesen Eintrag wirklich löschen?',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Löschen',
+          onPress: () => {
+            const updatedList = todoList.filter((_, i) => i !== index);
+            setTodoList(updatedList);
+            saveTodoList(updatedList);
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#85C1E9', '#311b6b']} // Gleicher Hintergrundverlauf wie in den anderen Komponenten
+      style={styles.container}
+    >
       <View style={styles.scrollview}>
         <ScrollView>
+          {/* Nur Habits mit Text anzeigen */}
+          {habits.map((habit, index) => (
+            <Pressable key={`habit-${index}`} onPress={() => toggleCompletion(index, true)}>
+              <Text style={[styles.text, habit.completed ? styles.strikethrough : null]}>
+                {habit.text}
+              </Text>
+            </Pressable>
+          ))}
+          {/* Normale To-Do-Liste */}
           {todoList.map((item, index) => (
             <Pressable
               key={index}
               onPress={() => toggleCompletion(index)}
-              onLongPress={() => deleteTodoItem(index)}
+              onLongPress={() => deleteTodoItem(index)} // Hinzugefügt: Löschen mit Longpress
             >
               <Text style={[styles.text, item.completed ? styles.strikethrough : null]}>
                 {item.text}
@@ -78,7 +145,14 @@ export default function ToDo() {
       </View>
 
       <View style={styles.buttonview}>
-        <Button title="Hinzufügen" onPress={() => setModalVisible(true)} color="#a065ec"/>
+        <Pressable onPress={() => setModalVisible(true)} style={styles.buttonPressable}>
+          <LinearGradient
+            colors={['#FFD700', '#FFA500']} // Gelb-Orange Verlauf
+            style={styles.gradientButton}
+          >
+            <Text style={styles.buttonText}>Hinzufügen</Text>
+          </LinearGradient>
+        </Pressable>
       </View>
 
       <Modal
@@ -88,7 +162,6 @@ export default function ToDo() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalView}>
-          <Image style={styles.image} source={require('../assets/daily-planning.png')} />
           <TextInput
             style={styles.input}
             placeholder="Neuer To-Do-Punkt"
@@ -96,69 +169,96 @@ export default function ToDo() {
             onChangeText={setTextInputValue}
           />
           <View style={styles.buttonContainer}>
-            <Button title="Abbrechen" onPress={() => setModalVisible(false)} color="#f31282"/>
-            <Button title="Speichern" onPress={addTodoItem} color="#b180f0" />
+            <Pressable onPress={() => setModalVisible(false)} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Abbrechen</Text>
+            </Pressable>
+            <Pressable onPress={addTodoItem} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Speichern</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'center',
-      padding: 20,
-      backgroundColor: '#311b6b',
-    },
-    scrollview: {
-      flex: 1,
-      marginTop: 40,
-    },
-    image: {
-      width: 150,
-      height: 150,
-      marginBottom: 64,
-    },
-    text: {
-      fontSize: 16,
-      padding: 10,
-      //borderWidth: 1,
-      //borderColor: '#e4d0ff',
-      //backgroundColor: '#e4d0ff',
-      //borderRadius: 6,  
-      //color: '#1e085a',
-      color: '#e4d0ff',
-      marginBottom: 8,
-    },
-    strikethrough: {
-      textDecorationLine: 'line-through',
-      color: '#e4d0ff',
-    },
-    buttonview: {
-      padding: 10,
-    },
-    modalView: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#1e085a',
-    },
-    input: {
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: '#e4d0ff',
-      backgroundColor: '#e4d0ff',
-      color: '#120438',
-      padding: 16,
-      width: '70%',
-    },
-    buttonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignContent: 'center',
-      width: '70%',
-      margin: 32,
-    },
-  });
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    width: '100%',
+  },
+  scrollview: {
+    flex: 1,
+    marginTop: 40,
+  },
+  text: {
+    fontSize: 16,
+    padding: 10,
+    color: 'white',
+    marginBottom: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+  },
+  strikethrough: {
+    textDecorationLine: 'line-through',
+    color: 'white',
+  },
+  buttonview: {
+    padding: 10,
+  },
+  buttonPressable: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  gradientButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1e085a',
+  },
+  input: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e4d0ff',
+    backgroundColor: '#e4d0ff',
+    color: '#120438',
+    padding: 16,
+    width: '70%',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignContent: 'center',
+    width: '70%',
+    margin: 32,
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#b180f0',
+    borderRadius: 10,
+    margin: 5,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+});

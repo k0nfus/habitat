@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ToDo from './components/To-Do'; 
 import Tagebuch from './components/Tagebuch'; 
-import Finanzen from './components/Finanzen'; 
 import Einstellungen from './components/Einstellungen'; 
 import { Ionicons } from '@expo/vector-icons'; 
 import { StatusBar } from 'expo-status-bar'; 
@@ -70,7 +69,7 @@ export default function App() {
         >
           <Tab.Screen name="To-Do" component={ToDo} />
           <Tab.Screen name="Tagebuch" component={Tagebuch} />
-          <Tab.Screen name="Finanzen" component={Finanzen} />
+      
           <Tab.Screen name="Einstellungen" component={Einstellungen} />
         </Tab.Navigator>
       </NavigationContainer>

@@ -5,191 +5,227 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Einstellungen() {
-    const [selectedStartseite, setSelectedStartseite] = useState('Tagebuch');  // Standard auf 'Tagebuch'
-    const [habits, setHabits] = useState([]);
+  const [selectedStartseite, setSelectedStartseite] = useState('Tagebuch');
+  const [templateText, setTemplateText] = useState('');
+  const [groups, setGroups] = useState([]);
 
-    useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const savedStartseite = await AsyncStorage.getItem('startseite');
-                if (savedStartseite) {
-                    setSelectedStartseite(savedStartseite);
-                }
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedStartseite = await AsyncStorage.getItem('startseite');
+        if (savedStartseite) setSelectedStartseite(savedStartseite);
 
-                const savedHabits = await AsyncStorage.getItem('habits');
-                if (savedHabits) {
-                    setHabits(JSON.parse(savedHabits));
-                } else {
-                    setHabits([]); // Starten mit einem leeren Array für Habits
-                }
-            } catch (error) {
-                console.error('Fehler beim Laden der Einstellungen', error);
-            }
-        };
+        const savedTemplate = await AsyncStorage.getItem('diaryTemplate');
+        if (savedTemplate) setTemplateText(savedTemplate);
 
-        loadSettings();
-    }, []);
-
-    const saveStartseite = async (startseite) => {
-        try {
-            setSelectedStartseite(startseite);
-            await AsyncStorage.setItem('startseite', startseite);  // Speichere die Auswahl
-        } catch (error) {
-            console.error('Fehler beim Speichern der Startseite', error);
-        }
-    };
-
-    const saveHabits = async (newHabits) => {
-        try {
-            setHabits(newHabits);
-            await AsyncStorage.setItem('habits', JSON.stringify(newHabits));
-        } catch (error) {
-            console.error('Fehler beim Speichern der Habits', error);
-        }
-    };
-
-    const handleHabitChange = (index, value) => {
-        const updatedHabits = [...habits];
-        updatedHabits[index] = value;
-        saveHabits(updatedHabits);
-    };
-
-    const addHabit = () => {
-        if (habits.length < 5) {
-            const updatedHabits = [...habits, ''];
-            saveHabits(updatedHabits);
+        const savedGroups = await AsyncStorage.getItem('todoGroups');
+        if (savedGroups) {
+          const parsed = JSON.parse(savedGroups);
+          setGroups(parsed.length ? parsed : defaultGroups());
         } else {
-            Alert.alert('Limit erreicht', 'Du kannst maximal 5 Habits hinzufügen.');
+          const defaults = defaultGroups();
+          setGroups(defaults);
+          await AsyncStorage.setItem('todoGroups', JSON.stringify(defaults));
         }
+      } catch (error) {
+        console.error('Fehler beim Laden der Einstellungen', error);
+      }
     };
 
-    const deleteHabit = (index) => {
-        const updatedHabits = [...habits];
-        updatedHabits.splice(index, 1);
-        saveHabits(updatedHabits);
-    };
+    loadSettings();
+  }, []);
 
-    return (
-        <LinearGradient
-            colors={['#85C1E9', '#311b6b']} // Gleicher Hintergrundverlauf wie in den anderen Komponenten
-            style={styles.container}
-        >
-            <ScrollView> 
-                <View style={styles.settingView}>
-                    <Text style={styles.text}>Startseite</Text>
-                    <Pressable onPress={() => saveStartseite('To-Do')}>
-                        <View style={styles.option}>
-                            <Checkbox
-                                style={styles.checkbox}
-                                value={selectedStartseite === 'To-Do'}
-                                onValueChange={() => saveStartseite('To-Do')}
-                            />
-                            <Text style={styles.paragraph}>To-Do-Liste</Text>
-                        </View>
-                    </Pressable>
-                    <Pressable onPress={() => saveStartseite('Tagebuch')}>
-                        <View style={styles.option}>
-                            <Checkbox
-                                style={styles.checkbox}
-                                value={selectedStartseite === 'Tagebuch'}
-                                onValueChange={() => saveStartseite('Tagebuch')}
-                            />
-                            <Text style={styles.paragraph}>Tagebuch</Text>
-                        </View>
-                    </Pressable>
-                    <Pressable onPress={() => saveStartseite('Finanzen')}>
-                        <View style={styles.option}>
-                            <Checkbox
-                                style={styles.checkbox}
-                                value={selectedStartseite === 'Finanzen'}
-                                onValueChange={() => saveStartseite('Finanzen')}
-                            />
-                            <Text style={styles.paragraph}>Finanzen</Text>
-                        </View>
-                    </Pressable>
+  const defaultGroups = () => [{ name: 'Allgemein', order: 1, showIfEmpty: true }];
+
+  const saveStartseite = async (startseite) => {
+    try {
+      setSelectedStartseite(startseite);
+      await AsyncStorage.setItem('startseite', startseite);
+    } catch (error) {
+      console.error('Fehler beim Speichern der Startseite', error);
+    }
+  };
+
+  const saveTemplateText = async () => {
+    try {
+      await AsyncStorage.setItem('diaryTemplate', templateText);
+      Alert.alert('Erfolg', 'Tagebuch-Template wurde gespeichert.');
+    } catch (error) {
+      console.error('Fehler beim Speichern des Templates', error);
+    }
+  };
+
+  const updateGroups = async (newGroups) => {
+    setGroups(newGroups);
+    await AsyncStorage.setItem('todoGroups', JSON.stringify(newGroups));
+  };
+
+  const handleGroupChange = (index, field, value) => {
+    const updated = [...groups];
+    if (field === 'order') {
+      updated[index][field] = parseInt(value) || 0;
+    } else if (field === 'showIfEmpty') {
+      updated[index][field] = !updated[index][field];
+    } else {
+      updated[index][field] = value;
+    }
+    updateGroups(updated);
+  };
+
+  const addGroup = () => {
+    const newGroup = { name: '', order: groups.length + 1, showIfEmpty: true };
+    updateGroups([...groups, newGroup]);
+  };
+
+  const deleteGroup = (index) => {
+    if (groups.length === 1) {
+      Alert.alert("Hinweis", "Mindestens eine Gruppe muss vorhanden sein.");
+      return;
+    }
+    const updated = [...groups];
+    updated.splice(index, 1);
+    updateGroups(updated);
+  };
+
+  return (
+    <LinearGradient colors={['#85C1E9', '#311b6b']} style={styles.container}>
+      <ScrollView>
+        {/* Startseite */}
+        <View style={styles.settingView}>
+          <Text style={styles.text}>Startseite</Text>
+          <Pressable onPress={() => saveStartseite('To-Do')}>
+            <View style={styles.option}>
+              <Checkbox
+                style={styles.checkbox}
+                value={selectedStartseite === 'To-Do'}
+                onValueChange={() => saveStartseite('To-Do')}
+              />
+              <Text style={styles.paragraph}>To-Do-Liste</Text>
+            </View>
+          </Pressable>
+          <Pressable onPress={() => saveStartseite('Tagebuch')}>
+            <View style={styles.option}>
+              <Checkbox
+                style={styles.checkbox}
+                value={selectedStartseite === 'Tagebuch'}
+                onValueChange={() => saveStartseite('Tagebuch')}
+              />
+              <Text style={styles.paragraph}>Tagebuch</Text>
+            </View>
+          </Pressable>
+        </View>
+
+        {/* Tagebuch-Template */}
+        <View style={styles.settingView}>
+          <Text style={styles.text}>Tagebuch-Template</Text>
+          <TextInput
+            style={[styles.input, { height: 200, textAlignVertical: 'top' }]}
+            multiline
+            placeholder="Tagebuch-Vorlage hier eingeben"
+            value={templateText}
+            onChangeText={setTemplateText}
+          />
+          <Button title="Speichern" onPress={saveTemplateText} color={'#4CAF50'} />
+        </View>
+
+        {/* To-Do Gruppen */}
+        <View style={styles.settingView}>
+          <Text style={styles.text}>To-Do-Gruppen</Text>
+          {groups
+            .sort((a, b) => a.order - b.order)
+            .map((group, index) => (
+              <View key={index} style={styles.groupRow}>
+                <TextInput
+                  style={[styles.input, { flex: 2 }]}
+                  placeholder="Gruppenname"
+                  value={group.name}
+                  onChangeText={(val) => handleGroupChange(index, 'name', val)}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  keyboardType="numeric"
+                  placeholder="Sort"
+                  value={group.order.toString()}
+                  onChangeText={(val) => handleGroupChange(index, 'order', val)}
+                />
+                <View style={styles.checkboxContainer}>
+                  <Checkbox
+                    value={group.showIfEmpty}
+                    onValueChange={() => handleGroupChange(index, 'showIfEmpty')}
+                  />
+                  <Text style={styles.checkboxLabel}>anzeigen</Text>
                 </View>
-                <View style={styles.settingView}>
-                    <Text style={styles.text}>Habits</Text>
-                    {habits.map((habit, index) => (
-                        <View key={index} style={styles.rowview}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={`Gewohnheit ${index + 1}`}
-                                value={habit}
-                                onChangeText={(value) => handleHabitChange(index, value)}
-                            />
-                            <Button title="löschen" style={styles.button} color={'red'} onPress={() => deleteHabit(index)} />
-                        </View>
-                    ))}
-                    {habits.length < 5 && (
-                        <View style={styles.rowview}>
-                            <Button title="Hinzufügen" style={styles.addButton} color={'green'} onPress={addHabit} />
-                        </View>
-                    )}
-                </View>
-            </ScrollView>
-        </LinearGradient>
-    );
+                <Pressable onPress={() => deleteGroup(index)} style={styles.deleteButton}>
+                  <Text style={styles.deleteText}>🗑</Text>
+                </Pressable>
+              </View>
+            ))}
+          <Button title="Neue Gruppe hinzufügen" color="green" onPress={addGroup} />
+        </View>
+      </ScrollView>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 20,
-        width: '100%',
-    },
-    button: {
-        marginLeft: 8,
-    },
-    rowview: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-    },
-    settingView: {
-        margin: 8,
-        padding: 8,
-        borderColor: '#e4d0ff',
-        backgroundColor: '#e4d0ff',
-        borderRadius: 6,
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-    },
-    option: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    checkbox: {
-        marginRight: 10,
-    },
-    paragraph: {
-        fontSize: 16,
-    },
-    text: {
-        fontSize: 18,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#e4d0ff',
-        backgroundColor: '#e4d0ff',
-        borderRadius: 6,
-        color: '#1e085a',
-        marginBottom: 8,
-        alignItems: 'center',
-    },
-    input: {
-        flex: 1,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#e4d0ff',
-        backgroundColor: '#ffffff',
-        color: '#120438',
-        padding: 8,
-        marginRight: 8,
-    },
-    addButton: {
-        marginLeft: 8,
-    },
+  container: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 40,
+    width: '100%',
+  },
+  settingView: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#e4d0ff',
+    borderRadius: 6,
+  },
+  text: {
+    fontSize: 18,
+    marginBottom: 10,
+    color: '#1e085a',
+    fontWeight: 'bold',
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  paragraph: {
+    fontSize: 16,
+  },
+  checkbox: {
+    marginRight: 10,
+  },
+  input: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e4d0ff',
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 10,
+    color: '#120438',
+  },
+  groupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  checkboxLabel: {
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  deleteButton: {
+    marginLeft: 4,
+  },
+  deleteText: {
+    color: 'red',
+    fontSize: 18,
+  },
 });

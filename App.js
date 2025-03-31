@@ -52,8 +52,6 @@ export default function App() {
                 iconName = 'checkmark-done-outline'; 
               } else if (route.name === 'Tagebuch') {
                 iconName = 'book-outline'; 
-              } else if (route.name === 'Finanzen') {
-                iconName = 'bar-chart-outline'; 
               } else if (route.name === 'Einstellungen') {
                 iconName = 'settings-outline'; 
               }

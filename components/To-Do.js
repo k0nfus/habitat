@@ -234,7 +234,6 @@ const styles = StyleSheet.create({
   },
   completedItem: {
     backgroundColor: '#1ba564',
-    textDecorationLine: 'line-through',
     opacity: 0.75,
   },
   todoText: {

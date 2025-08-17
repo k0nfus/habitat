@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AddButton from './AddButton';
 
 export default function Tracking() {
   const [entries, setEntries] = useState([]);
@@ -78,17 +79,16 @@ export default function Tracking() {
     setModalVisible(false);
   };
 
-  const deleteEntry = () => {
+  const deleteEntry = (date) => {
     Alert.alert('Eintrag löschen', 'Möchtest du diesen Eintrag wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
       {
         text: 'Löschen',
         style: 'destructive',
         onPress: () => {
-          const filtered = entries.filter(e => e.date !== currentDate);
+          const filtered = entries.filter(e => e.date !== date);
           setEntries(filtered);
           saveEntries(filtered);
-          setModalVisible(false);
         }
       }
     ]);
@@ -98,7 +98,7 @@ export default function Tracking() {
     const weightMet = goalWeight && item.weight <= goalWeight;
     const stepsMet = minSteps && item.steps >= minSteps;
     return (
-      <Pressable onPress={() => openEditModal(item)} style={styles.entry}>
+      <Pressable onPress={() => openEditModal(item)} onLongPress={() => deleteEntry(item.date)} style={styles.entry}>
         <Text style={styles.dateText}>{new Date(item.date).toLocaleDateString('de-DE')}</Text>
         <View style={styles.valueRow}>
           <View style={[styles.valueBox, weightMet && styles.successBox]}>
@@ -126,11 +126,7 @@ export default function Tracking() {
         contentContainerStyle={{ paddingBottom: 80 }}
       />
       <View style={styles.addButtonView}>
-        <Pressable onPress={openAddModal} style={styles.addButton}>
-          <LinearGradient colors={['#b180f0', '#6a0dad']} style={styles.addButtonInner}>
-            <Text style={styles.addButtonText}>Hinzufügen</Text>
-          </LinearGradient>
-        </Pressable>
+        <AddButton onPress={openAddModal} />
       </View>
 
       <Modal
@@ -157,11 +153,6 @@ export default function Tracking() {
             <Pressable onPress={() => setModalVisible(false)} style={styles.modalButton}>
               <Text style={styles.modalButtonText}>Abbrechen</Text>
             </Pressable>
-            {entries.some(e => e.date === currentDate) && (
-              <Pressable onPress={deleteEntry} style={styles.modalButton}>
-                <Text style={styles.modalButtonText}>Löschen</Text>
-              </Pressable>
-            )}
             <Pressable onPress={saveEntry} style={styles.modalButton}>
               <Text style={styles.modalButtonText}>Speichern</Text>
             </Pressable>
@@ -211,22 +202,6 @@ const styles = StyleSheet.create({
   addButtonView: {
     padding: 16,
     alignItems: 'center',
-  },
-  addButton: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  addButtonInner: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   modalView: {
     flex: 1,

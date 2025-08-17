@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Text, Button, View, Modal, StyleSheet, TextInput, FlatList, Pressable, Alert } from 'react-native';
+import { Text, View, Modal, StyleSheet, TextInput, FlatList, Pressable, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import AddButton from './AddButton';
 
 export default function Tagebuch() {
   const [entries, setEntries] = useState([]);
@@ -118,7 +119,7 @@ export default function Tagebuch() {
     <Pressable
       onPress={() => editEntry(item.id)}
       onLongPress={() => deleteEntry(item.id)}
-      style={styles.entryCard}
+      style={styles.entry}
     >
       <Text style={styles.dateText}>{formatDate(item.date)}</Text>
     </Pressable>
@@ -131,15 +132,12 @@ export default function Tagebuch() {
           data={entries}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 80 }}
         />
       </View>
 
       <View style={styles.buttonview}>
-        <Pressable onPress={handleNewEntry} style={styles.buttonPressable}>
-          <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.gradientButton}>
-            <Text style={styles.buttonText}>Hinzufügen</Text>
-          </LinearGradient>
-        </Pressable>
+        <AddButton onPress={handleNewEntry} />
       </View>
 
       <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
@@ -147,18 +145,19 @@ export default function Tagebuch() {
           <TextInput
             style={styles.input}
             placeholder="Tagebucheintrag"
+            placeholderTextColor="#888"
             value={textInputValue}
             onChangeText={setTextInputValue}
             multiline
             numberOfLines={20}
           />
           <View style={styles.buttonContainer}>
-            <Button title="Abbrechen" color="#f31282" onPress={() => setModalVisible(false)} />
-            <Button
-              title={currentEntry ? 'Speichern' : 'Hinzufügen'}
-              color="#b180f0"
-              onPress={currentEntry ? saveEditedEntry : addEntry}
-            />
+            <Pressable onPress={() => setModalVisible(false)} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Abbrechen</Text>
+            </Pressable>
+            <Pressable onPress={currentEntry ? saveEditedEntry : addEntry} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Speichern</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -175,11 +174,10 @@ const styles = StyleSheet.create({
   contentview: {
     flex: 1,
   },
-  entryCard: {
-    backgroundColor: '#2c2c2e',
+  entry: {
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderColor: '#333',
   },
   dateText: {
     fontSize: 16,
@@ -189,22 +187,6 @@ const styles = StyleSheet.create({
   buttonview: {
     padding: 16,
     alignItems: 'center',
-  },
-  buttonPressable: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  gradientButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   modalView: {
     flex: 1,
@@ -224,5 +206,17 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#b180f0',
+    borderRadius: 10,
+    margin: 5,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

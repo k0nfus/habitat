@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
+import AddButton from './AddButton';
 
 export default function ToDo() {
   const [modalVisible, setModalVisible] = useState(false);
@@ -150,14 +151,7 @@ export default function ToDo() {
       </ScrollView>
 
       <View style={styles.buttonview}>
-        <Pressable onPress={() => setModalVisible(true)} style={styles.buttonPressable}>
-          <LinearGradient
-            colors={['#FFD700', '#FFA500']}
-            style={styles.gradientButton}
-          >
-            <Text style={styles.buttonText}>Hinzufügen</Text>
-          </LinearGradient>
-        </Pressable>
+        <AddButton onPress={() => setModalVisible(true)} />
       </View>
 
       <Modal
@@ -170,6 +164,7 @@ export default function ToDo() {
           <TextInput
             style={styles.input}
             placeholder="Neuer To-Do-Punkt"
+            placeholderTextColor="#ccc"
             value={textInputValue}
             onChangeText={setTextInputValue}
           />
@@ -245,22 +240,6 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  buttonPressable: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  gradientButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   modalView: {
     flex: 1,
     justifyContent: 'center',
@@ -281,15 +260,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 20,
     justifyContent: 'center',
+    height: 60,
   },
   picker: {
-    height: 50,
+    height: 60,
     color: '#f5f5f5',
     textAlign: 'center',
   },
   pickerItem: {
     color: '#f5f5f5',
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
   },
   modalLabel: {

@@ -170,6 +170,7 @@ export default function Einstellungen() {
           <TextInput
             style={styles.input}
             placeholder="Zielgewicht (kg)"
+            placeholderTextColor="#ccc"
             keyboardType="decimal-pad"
             value={goalWeight}
             onChangeText={saveGoalWeight}
@@ -177,6 +178,7 @@ export default function Einstellungen() {
           <TextInput
             style={styles.input}
             placeholder="Mindestschritte"
+            placeholderTextColor="#ccc"
             keyboardType="number-pad"
             value={minSteps}
             onChangeText={saveMinSteps}

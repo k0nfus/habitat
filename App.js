@@ -59,10 +59,10 @@ export default function App() {
             },
             headerShown: false, 
             tabBarStyle: {
-              backgroundColor: '#311b6b',
+              backgroundColor: '#000000',
             },
-            tabBarActiveTintColor: 'tomato',
-            tabBarInactiveTintColor: '#e4d0ff',
+            tabBarActiveTintColor: '#FFA500',
+            tabBarInactiveTintColor: '#888888',
           })}
         >
           <Tab.Screen name="To-Do" component={ToDo} />

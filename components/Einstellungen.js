@@ -88,7 +88,7 @@ export default function Einstellungen() {
   };
 
   return (
-    <LinearGradient colors={['#85C1E9', '#311b6b']} style={styles.container}>
+    <LinearGradient colors={['#000000', '#1c1c1e']} style={styles.container}>
       <ScrollView>
         {/* Startseite */}
         <View style={styles.settingView}>
@@ -171,19 +171,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 60,
     width: '100%',
   },
   settingView: {
     marginBottom: 20,
     padding: 10,
-    backgroundColor: '#e4d0ff',
+    backgroundColor: '#2c2c2e',
     borderRadius: 6,
   },
   text: {
     fontSize: 18,
     marginBottom: 10,
-    color: '#1e085a',
+    color: '#f5f5f5',
     fontWeight: 'bold',
   },
   option: {
@@ -193,18 +193,19 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     fontSize: 16,
+    color: '#f5f5f5',
   },
   checkbox: {
     marginRight: 10,
   },
   input: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e4d0ff',
+    backgroundColor: '#1c1c1e',
+    borderColor: '#333',
     borderWidth: 1,
     borderRadius: 6,
     padding: 8,
     marginBottom: 10,
-    color: '#120438',
+    color: '#f5f5f5',
   },
   groupRow: {
     flexDirection: 'row',
@@ -220,6 +221,7 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     marginLeft: 4,
     fontSize: 12,
+    color: '#f5f5f5',
   },
   deleteButton: {
     marginLeft: 4,

@@ -125,7 +125,7 @@ export default function Tagebuch() {
   );
 
   return (
-    <LinearGradient colors={['#85C1E9', '#311b6b']} style={styles.main}>
+    <LinearGradient colors={['#000000', '#1c1c1e']} style={styles.main}>
       <View style={styles.contentview}>
         <FlatList
           data={entries}
@@ -170,24 +170,25 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     padding: 20,
+    paddingTop: 60,
   },
   contentview: {
     flex: 1,
-    marginTop: 40,
   },
   entryCard: {
-    backgroundColor: '#e4d0ff',
+    backgroundColor: '#2c2c2e',
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
   },
   dateText: {
     fontSize: 16,
-    color: '#120438',
+    color: '#f5f5f5',
     fontWeight: 'bold',
   },
   buttonview: {
     padding: 16,
+    alignItems: 'center',
   },
   buttonPressable: {
     borderRadius: 10,
@@ -195,8 +196,10 @@ const styles = StyleSheet.create({
   },
   gradientButton: {
     paddingVertical: 15,
-    alignItems: 'center',
+    paddingHorizontal: 30,
     borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
     color: 'white',
@@ -205,16 +208,18 @@ const styles = StyleSheet.create({
   },
   modalView: {
     flex: 1,
-    backgroundColor: '#311b6b',
+    backgroundColor: '#1c1c1e',
     padding: 20,
   },
   input: {
-    backgroundColor: '#e4d0ff',
-    color: '#120438',
+    backgroundColor: '#2c2c2e',
+    color: '#f5f5f5',
     borderRadius: 6,
     padding: 16,
     marginBottom: 20,
     flex: 1,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   buttonContainer: {
     flexDirection: 'row',

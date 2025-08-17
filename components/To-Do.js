@@ -114,7 +114,7 @@ export default function ToDo() {
   };
 
   return (
-    <LinearGradient colors={['#85C1E9', '#311b6b']} style={styles.container}>
+    <LinearGradient colors={['#000000', '#1c1c1e']} style={styles.container}>
       <ScrollView style={{ flex: 1 }}>
         {groups
           .sort((a, b) => a.order - b.order)
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 60,
     width: '100%',
   },
   groupSection: {
@@ -220,14 +220,14 @@ const styles = StyleSheet.create({
   groupTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#f5f5f5',
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderColor: '#e4d0ff',
+    borderColor: '#333',
     paddingBottom: 4,
   },
   todoItem: {
-    backgroundColor: '#ffffffcc',
+    backgroundColor: '#2c2c2e',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -238,10 +238,11 @@ const styles = StyleSheet.create({
   },
   todoText: {
     fontSize: 16,
-    color: '#120438',
+    color: '#f5f5f5',
   },
   buttonview: {
-    padding: 10,
+    padding: 16,
+    alignItems: 'center',
   },
   buttonPressable: {
     borderRadius: 10,
@@ -262,29 +263,29 @@ const styles = StyleSheet.create({
   modalView: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#1e085a',
+    backgroundColor: '#1c1c1e',
     padding: 20,
   },
   input: {
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e4d0ff',
-    backgroundColor: '#e4d0ff',
-    color: '#120438',
+    borderColor: '#333',
+    backgroundColor: '#2c2c2e',
+    color: '#f5f5f5',
     padding: 16,
     marginBottom: 20,
   },
   pickerContainer: {
-    backgroundColor: '#e4d0ff',
+    backgroundColor: '#2c2c2e',
     borderRadius: 6,
     marginBottom: 20,
   },
   picker: {
     height: 50,
-    color: '#120438',
+    color: '#f5f5f5',
   },
   modalLabel: {
-    color: 'white',
+    color: '#f5f5f5',
     fontSize: 16,
     marginBottom: 6,
   },

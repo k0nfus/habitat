@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AddButton from './AddButton';
 
+
 export default function Tracking() {
   const [entries, setEntries] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);

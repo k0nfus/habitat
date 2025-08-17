@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: '#f5f5f5',
-    fontWeight: 'bold',
+    textAlignVertical: 'auto'
   },
   buttonview: {
     padding: 16,

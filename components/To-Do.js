@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   todoItem: {
-    backgroundColor: '#2c2c2e',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -264,7 +263,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 60,
-    color: '#f5f5f5',
+    color: '#000000',
     textAlign: 'center',
   },
   pickerItem: {

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import ToDo from './components/To-Do'; 
-import Tagebuch from './components/Tagebuch'; 
-import Einstellungen from './components/Einstellungen'; 
+import ToDo from './components/To-Do';
+import Tagebuch from './components/Tagebuch';
+import Tracking from './components/Tracking';
+import Einstellungen from './components/Einstellungen';
 import { Ionicons } from '@expo/vector-icons'; 
 import { StatusBar } from 'expo-status-bar'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
@@ -49,11 +50,13 @@ export default function App() {
             tabBarIcon: ({ color, size }) => {
               let iconName;
               if (route.name === 'To-Do') {
-                iconName = 'checkmark-done-outline'; 
+                iconName = 'checkmark-done-outline';
               } else if (route.name === 'Tagebuch') {
-                iconName = 'book-outline'; 
+                iconName = 'book-outline';
+              } else if (route.name === 'Tracking') {
+                iconName = 'bar-chart-outline';
               } else if (route.name === 'Einstellungen') {
-                iconName = 'settings-outline'; 
+                iconName = 'settings-outline';
               }
               return <Ionicons name={iconName} size={size} color={color} />;
             },
@@ -67,7 +70,7 @@ export default function App() {
         >
           <Tab.Screen name="To-Do" component={ToDo} />
           <Tab.Screen name="Tagebuch" component={Tagebuch} />
-      
+          <Tab.Screen name="Tracking" component={Tracking} />
           <Tab.Screen name="Einstellungen" component={Einstellungen} />
         </Tab.Navigator>
       </NavigationContainer>

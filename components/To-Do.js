@@ -180,6 +180,7 @@ export default function ToDo() {
               selectedValue={selectedGroup}
               onValueChange={(itemValue) => setSelectedGroup(itemValue)}
               style={styles.picker}
+              itemStyle={styles.pickerItem}
             >
               {groups
                 .sort((a, b) => a.order - b.order)
@@ -279,10 +280,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2c2e',
     borderRadius: 6,
     marginBottom: 20,
+    justifyContent: 'center',
   },
   picker: {
     height: 50,
     color: '#f5f5f5',
+    textAlign: 'center',
+  },
+  pickerItem: {
+    color: '#f5f5f5',
+    fontSize: 18,
+    textAlign: 'center',
   },
   modalLabel: {
     color: '#f5f5f5',

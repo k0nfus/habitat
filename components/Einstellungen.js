@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function Einstellungen() {
   const [selectedStartseite, setSelectedStartseite] = useState('Tagebuch');
   const [templateText, setTemplateText] = useState('');
+  const [goalWeight, setGoalWeight] = useState('');
+  const [minSteps, setMinSteps] = useState('');
   const [groups, setGroups] = useState([]);
 
   useEffect(() => {
@@ -17,6 +19,12 @@ export default function Einstellungen() {
 
         const savedTemplate = await AsyncStorage.getItem('diaryTemplate');
         if (savedTemplate) setTemplateText(savedTemplate);
+
+        const savedGoalWeight = await AsyncStorage.getItem('goalWeight');
+        if (savedGoalWeight) setGoalWeight(savedGoalWeight);
+
+        const savedMinSteps = await AsyncStorage.getItem('minSteps');
+        if (savedMinSteps) setMinSteps(savedMinSteps);
 
         const savedGroups = await AsyncStorage.getItem('todoGroups');
         if (savedGroups) {
@@ -52,6 +60,24 @@ export default function Einstellungen() {
       Alert.alert('Erfolg', 'Tagebuch-Template wurde gespeichert.');
     } catch (error) {
       console.error('Fehler beim Speichern des Templates', error);
+    }
+  };
+
+  const saveGoalWeight = async (value) => {
+    try {
+      setGoalWeight(value);
+      await AsyncStorage.setItem('goalWeight', value);
+    } catch (error) {
+      console.error('Fehler beim Speichern des Zielgewichts', error);
+    }
+  };
+
+  const saveMinSteps = async (value) => {
+    try {
+      setMinSteps(value);
+      await AsyncStorage.setItem('minSteps', value);
+    } catch (error) {
+      console.error('Fehler beim Speichern der Mindestschritte', error);
     }
   };
 
@@ -113,6 +139,16 @@ export default function Einstellungen() {
               <Text style={styles.paragraph}>Tagebuch</Text>
             </View>
           </Pressable>
+          <Pressable onPress={() => saveStartseite('Tracking')}>
+            <View style={styles.option}>
+              <Checkbox
+                style={styles.checkbox}
+                value={selectedStartseite === 'Tracking'}
+                onValueChange={() => saveStartseite('Tracking')}
+              />
+              <Text style={styles.paragraph}>Gewicht & Schritte</Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* Tagebuch-Template */}
@@ -126,6 +162,25 @@ export default function Einstellungen() {
             onChangeText={setTemplateText}
           />
           <Button title="Speichern" onPress={saveTemplateText} color={'#4CAF50'} />
+        </View>
+
+        {/* Tracking-Ziele */}
+        <View style={styles.settingView}>
+          <Text style={styles.text}>Tracking-Ziele</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Zielgewicht (kg)"
+            keyboardType="decimal-pad"
+            value={goalWeight}
+            onChangeText={saveGoalWeight}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Mindestschritte"
+            keyboardType="number-pad"
+            value={minSteps}
+            onChangeText={saveMinSteps}
+          />
         </View>
 
         {/* To-Do Gruppen */}

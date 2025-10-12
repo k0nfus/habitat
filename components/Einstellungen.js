@@ -1,32 +1,62 @@
-import React, { useState, useEffect } from "react";
-import { Button, View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+  Alert,
+  Switch,
+} from "react-native";
 import Checkbox from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../theme';
+import { defaultDiarySettings } from '../constants/diaryDefaults';
+
+const SETTINGS_STORAGE_KEY = 'diarySettings';
+
+const clone = (value) => JSON.parse(JSON.stringify(value));
+
+const mergeSettings = (base, override) => {
+  if (!override) return clone(base);
+  const merged = clone(base);
+  Object.keys(override).forEach((key) => {
+    const overrideValue = override[key];
+    if (Array.isArray(overrideValue)) {
+      merged[key] = overrideValue.map((item) => (typeof item === 'object' ? { ...item } : item));
+    } else if (overrideValue && typeof overrideValue === 'object') {
+      merged[key] = mergeSettings(base[key] || {}, overrideValue);
+    } else {
+      merged[key] = overrideValue;
+    }
+  });
+  return merged;
+};
 
 export default function Einstellungen() {
+  const { theme, mode, setMode } = useTheme();
   const [selectedStartseite, setSelectedStartseite] = useState('Tagebuch');
-  const [templateText, setTemplateText] = useState('');
   const [goalWeight, setGoalWeight] = useState('');
   const [minSteps, setMinSteps] = useState('');
   const [groups, setGroups] = useState([]);
+  const [diarySettings, setDiarySettings] = useState(() => clone(defaultDiarySettings));
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const savedStartseite = await AsyncStorage.getItem('startseite');
+        const [savedStartseite, savedGoalWeight, savedMinSteps, savedGroups, savedDiarySettings] = await Promise.all([
+          AsyncStorage.getItem('startseite'),
+          AsyncStorage.getItem('goalWeight'),
+          AsyncStorage.getItem('minSteps'),
+          AsyncStorage.getItem('todoGroups'),
+          AsyncStorage.getItem(SETTINGS_STORAGE_KEY),
+        ]);
+
         if (savedStartseite) setSelectedStartseite(savedStartseite);
-
-        const savedTemplate = await AsyncStorage.getItem('diaryTemplate');
-        if (savedTemplate) setTemplateText(savedTemplate);
-
-        const savedGoalWeight = await AsyncStorage.getItem('goalWeight');
         if (savedGoalWeight) setGoalWeight(savedGoalWeight);
-
-        const savedMinSteps = await AsyncStorage.getItem('minSteps');
         if (savedMinSteps) setMinSteps(savedMinSteps);
-
-        const savedGroups = await AsyncStorage.getItem('todoGroups');
         if (savedGroups) {
           const parsed = JSON.parse(savedGroups);
           setGroups(parsed.length ? parsed : defaultGroups());
@@ -34,6 +64,11 @@ export default function Einstellungen() {
           const defaults = defaultGroups();
           setGroups(defaults);
           await AsyncStorage.setItem('todoGroups', JSON.stringify(defaults));
+        }
+        if (savedDiarySettings) {
+          setDiarySettings(mergeSettings(defaultDiarySettings, JSON.parse(savedDiarySettings)));
+        } else {
+          await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultDiarySettings));
         }
       } catch (error) {
         console.error('Fehler beim Laden der Einstellungen', error);
@@ -51,15 +86,6 @@ export default function Einstellungen() {
       await AsyncStorage.setItem('startseite', startseite);
     } catch (error) {
       console.error('Fehler beim Speichern der Startseite', error);
-    }
-  };
-
-  const saveTemplateText = async () => {
-    try {
-      await AsyncStorage.setItem('diaryTemplate', templateText);
-      Alert.alert('Erfolg', 'Tagebuch-Template wurde gespeichert.');
-    } catch (error) {
-      console.error('Fehler beim Speichern des Templates', error);
     }
   };
 
@@ -113,95 +139,272 @@ export default function Einstellungen() {
     updateGroups(updated);
   };
 
+  const persistDiarySettings = async (settingsToSave) => {
+    setDiarySettings(settingsToSave);
+    await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsToSave));
+  };
+
+  const handleFieldToggle = async (group, index) => {
+    const updated = clone(diarySettings);
+    if (group === 'daily') {
+      updated.daily.fields[index].enabled = !updated.daily.fields[index].enabled;
+    } else if (group === 'weeklyRating') {
+      updated.weekly.ratingFields[index].enabled = !updated.weekly.ratingFields[index].enabled;
+    } else if (group === 'weeklyText') {
+      updated.weekly.textFields[index].enabled = !updated.weekly.textFields[index].enabled;
+    } else if (group === 'monthlyRating') {
+      updated.monthly.ratingFields[index].enabled = !updated.monthly.ratingFields[index].enabled;
+    } else if (group === 'monthlyText') {
+      updated.monthly.textFields[index].enabled = !updated.monthly.textFields[index].enabled;
+    }
+    await persistDiarySettings(updated);
+  };
+
+  const handleFieldLabelChange = async (group, index, label) => {
+    const updated = clone(diarySettings);
+    if (group === 'daily') {
+      updated.daily.fields[index].label = label;
+    } else if (group === 'weeklyRating') {
+      updated.weekly.ratingFields[index].label = label;
+    } else if (group === 'weeklyText') {
+      updated.weekly.textFields[index].label = label;
+    } else if (group === 'monthlyRating') {
+      updated.monthly.ratingFields[index].label = label;
+    } else if (group === 'monthlyText') {
+      updated.monthly.textFields[index].label = label;
+    }
+    await persistDiarySettings(updated);
+  };
+
+  const handleWeeklyToggle = async (key) => {
+    const updated = { ...diarySettings, weekly: { ...diarySettings.weekly, [key]: !diarySettings.weekly[key] } };
+    await persistDiarySettings(updated);
+  };
+
+  const handleMonthlyToggle = async (key) => {
+    const updated = { ...diarySettings, monthly: { ...diarySettings.monthly, [key]: !diarySettings.monthly[key] } };
+    await persistDiarySettings(updated);
+  };
+
+  const renderToggleRow = (label, value, onValueChange) => (
+    <View style={styles.toggleRow}>
+      <Text style={[styles.toggleLabel, { color: theme.textPrimary }]}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+        thumbColor={value ? theme.accent : '#f4f3f4'}
+      />
+    </View>
+  );
+
+  const sectionStyle = [styles.settingView, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }];
+  const textStyle = [styles.text, { color: theme.textPrimary }];
+  const paragraphStyle = [styles.paragraph, { color: theme.textPrimary }];
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: theme.inputBackground,
+      borderColor: theme.inputBorder,
+      color: theme.textPrimary,
+    },
+  ];
+
   return (
-    <LinearGradient colors={['#000000', '#1c1c1e']} style={styles.container}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.container}>
       <ScrollView>
-        {/* Startseite */}
-        <View style={styles.settingView}>
-          <Text style={styles.text}>Startseite</Text>
-          <Pressable onPress={() => saveStartseite('To-Do')}>
-            <View style={styles.option}>
-              <Checkbox
-                style={styles.checkbox}
-                value={selectedStartseite === 'To-Do'}
-                onValueChange={() => saveStartseite('To-Do')}
-              />
-              <Text style={styles.paragraph}>To-Do-Liste</Text>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => saveStartseite('Tagebuch')}>
-            <View style={styles.option}>
-              <Checkbox
-                style={styles.checkbox}
-                value={selectedStartseite === 'Tagebuch'}
-                onValueChange={() => saveStartseite('Tagebuch')}
-              />
-              <Text style={styles.paragraph}>Tagebuch</Text>
-            </View>
-          </Pressable>
-          <Pressable onPress={() => saveStartseite('Tracking')}>
-            <View style={styles.option}>
-              <Checkbox
-                style={styles.checkbox}
-                value={selectedStartseite === 'Tracking'}
-                onValueChange={() => saveStartseite('Tracking')}
-              />
-              <Text style={styles.paragraph}>Gewicht & Schritte</Text>
-            </View>
-          </Pressable>
+        <View style={sectionStyle}>
+          <Text style={textStyle}>App-Theme</Text>
+          <View style={styles.optionRow}>
+            {['dark', 'light'].map((modeOption) => (
+              <Pressable
+                key={modeOption}
+                onPress={() => setMode(modeOption)}
+                style={[
+                  styles.themeOption,
+                  {
+                    borderColor: mode === modeOption ? theme.accent : theme.surfaceBorder,
+                    backgroundColor: mode === modeOption ? `${theme.accent}22` : theme.surface,
+                  },
+                ]}
+              >
+                <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>
+                  {modeOption === 'dark' ? 'Dunkel' : 'Hell'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
-        {/* Tagebuch-Template */}
-        <View style={styles.settingView}>
-          <Text style={styles.text}>Tagebuch-Template</Text>
-          <TextInput
-            style={[styles.input, { height: 200, textAlignVertical: 'top' }]}
-            multiline
-            placeholder="Tagebuch-Vorlage hier eingeben"
-            value={templateText}
-            onChangeText={setTemplateText}
-          />
-          <Button title="Speichern" onPress={saveTemplateText} color={'#4CAF50'} />
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Startseite</Text>
+          {['To-Do', 'Tagebuch', 'Tracking'].map((route) => (
+            <Pressable key={route} onPress={() => saveStartseite(route)}>
+              <View style={styles.option}>
+                <Checkbox
+                  style={styles.checkbox}
+                  value={selectedStartseite === route}
+                  onValueChange={() => saveStartseite(route)}
+                  color={selectedStartseite === route ? theme.accent : undefined}
+                />
+                <Text style={paragraphStyle}>{route === 'To-Do' ? 'To-Do-Liste' : route}</Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
 
-        {/* Tracking-Ziele */}
-        <View style={styles.settingView}>
-          <Text style={styles.text}>Tracking-Ziele</Text>
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Tägliche Eingabefelder</Text>
+          {diarySettings.daily.fields.map((field, index) => (
+            <View key={field.id} style={styles.fieldRow}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Feld ${index + 1}`}</Text>
+                <Switch
+                  value={field.enabled}
+                  onValueChange={() => handleFieldToggle('daily', index)}
+                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={field.label}
+                onChangeText={(value) => handleFieldLabelChange('daily', index, value)}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Wöchentlicher Rückblick</Text>
+          {renderToggleRow('Aktiviert', diarySettings.weekly.enabled, () => handleWeeklyToggle('enabled'))}
+          {renderToggleRow('Automatisch am Sonntag erzeugen', diarySettings.weekly.autoCreate, () => handleWeeklyToggle('autoCreate'))}
+
+          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
+          {diarySettings.weekly.ratingFields.map((field, index) => (
+            <View key={field.id} style={styles.fieldRow}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
+                <Switch
+                  value={field.enabled}
+                  onValueChange={() => handleFieldToggle('weeklyRating', index)}
+                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={field.label}
+                onChangeText={(value) => handleFieldLabelChange('weeklyRating', index, value)}
+              />
+            </View>
+          ))}
+
+          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
+          {diarySettings.weekly.textFields.map((field, index) => (
+            <View key={field.id} style={styles.fieldRow}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
+                <Switch
+                  value={field.enabled}
+                  onValueChange={() => handleFieldToggle('weeklyText', index)}
+                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={field.label}
+                onChangeText={(value) => handleFieldLabelChange('weeklyText', index, value)}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Monatliche Reflexion</Text>
+          {renderToggleRow('Aktiviert', diarySettings.monthly.enabled, () => handleMonthlyToggle('enabled'))}
+          {renderToggleRow('Automatisch am 1. erzeugen', diarySettings.monthly.autoCreate, () => handleMonthlyToggle('autoCreate'))}
+
+          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
+          {diarySettings.monthly.ratingFields.map((field, index) => (
+            <View key={field.id} style={styles.fieldRow}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
+                <Switch
+                  value={field.enabled}
+                  onValueChange={() => handleFieldToggle('monthlyRating', index)}
+                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={field.label}
+                onChangeText={(value) => handleFieldLabelChange('monthlyRating', index, value)}
+              />
+            </View>
+          ))}
+
+          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
+          {diarySettings.monthly.textFields.map((field, index) => (
+            <View key={field.id} style={styles.fieldRow}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
+                <Switch
+                  value={field.enabled}
+                  onValueChange={() => handleFieldToggle('monthlyText', index)}
+                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+                />
+              </View>
+              <TextInput
+                style={inputStyle}
+                value={field.label}
+                onChangeText={(value) => handleFieldLabelChange('monthlyText', index, value)}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Tracking-Ziele</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             placeholder="Zielgewicht (kg)"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={theme.textSecondary}
             keyboardType="decimal-pad"
             value={goalWeight}
             onChangeText={saveGoalWeight}
           />
           <TextInput
-            style={styles.input}
+            style={inputStyle}
             placeholder="Mindestschritte"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={theme.textSecondary}
             keyboardType="number-pad"
             value={minSteps}
             onChangeText={saveMinSteps}
           />
         </View>
 
-        {/* To-Do Gruppen */}
-        <View style={styles.settingView}>
-          <Text style={styles.text}>To-Do-Gruppen</Text>
+        <View style={sectionStyle}>
+          <Text style={textStyle}>To-Do-Gruppen</Text>
           {groups
             .sort((a, b) => a.order - b.order)
             .map((group, index) => (
               <View key={index} style={styles.groupRow}>
                 <TextInput
-                  style={[styles.input, { flex: 2 }]}
+                  style={[inputStyle, { flex: 2 }]}
                   placeholder="Gruppenname"
+                  placeholderTextColor={theme.textSecondary}
                   value={group.name}
                   onChangeText={(val) => handleGroupChange(index, 'name', val)}
                 />
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  style={[inputStyle, { flex: 1 }]}
                   keyboardType="numeric"
                   placeholder="Sort"
+                  placeholderTextColor={theme.textSecondary}
                   value={group.order.toString()}
                   onChangeText={(val) => handleGroupChange(index, 'order', val)}
                 />
@@ -209,15 +412,18 @@ export default function Einstellungen() {
                   <Checkbox
                     value={group.showIfEmpty}
                     onValueChange={() => handleGroupChange(index, 'showIfEmpty')}
+                    color={group.showIfEmpty ? theme.accent : undefined}
                   />
-                  <Text style={styles.checkboxLabel}>anzeigen</Text>
+                  <Text style={[styles.checkboxLabel, { color: theme.textSecondary }]}>anzeigen</Text>
                 </View>
                 <Pressable onPress={() => deleteGroup(index)} style={styles.deleteButton}>
-                  <Text style={styles.deleteText}>🗑</Text>
+                  <Text style={[styles.deleteText, { color: theme.danger }]}>🗑</Text>
                 </Pressable>
               </View>
             ))}
-          <Button title="Neue Gruppe hinzufügen" color="green" onPress={addGroup} />
+          <Pressable onPress={addGroup} style={[styles.secondaryButton, { borderColor: theme.surfaceBorder }]}>
+            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>Neue Gruppe hinzufügen</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </LinearGradient>
@@ -233,36 +439,42 @@ const styles = StyleSheet.create({
   },
   settingView: {
     marginBottom: 20,
-    padding: 10,
-    backgroundColor: '#2c2c2e',
-    borderRadius: 6,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   text: {
     fontSize: 18,
-    marginBottom: 10,
-    color: '#f5f5f5',
-    fontWeight: 'bold',
+    marginBottom: 14,
+    fontWeight: '700',
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   paragraph: {
     fontSize: 16,
-    color: '#f5f5f5',
   },
   checkbox: {
     marginRight: 10,
   },
   input: {
-    backgroundColor: '#1c1c1e',
-    borderColor: '#333',
     borderWidth: 1,
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 10,
-    color: '#f5f5f5',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
   },
   groupRow: {
     flexDirection: 'row',
@@ -278,13 +490,51 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     marginLeft: 4,
     fontSize: 12,
-    color: '#f5f5f5',
   },
   deleteButton: {
     marginLeft: 4,
   },
   deleteText: {
-    color: 'red',
     fontSize: 18,
+  },
+  fieldRow: {
+    marginBottom: 16,
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fieldSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Pressable, StyleSheet, ScrollView, Text, View,
-  Modal, TextInput, Alert
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Text,
+  View,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import AddButton from './AddButton';
+import { useTheme } from '../theme';
 
 export default function ToDo() {
+  const { theme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('Allgemein');
@@ -23,6 +31,13 @@ export default function ToDo() {
     }, [])
   );
 
+  useEffect(() => {
+    if (!groups.length) return;
+    if (!groups.find((group) => group.name === selectedGroup)) {
+      setSelectedGroup(groups[0]?.name || 'Allgemein');
+    }
+  }, [groups]);
+
   const loadGroups = async () => {
     try {
       const savedGroups = await AsyncStorage.getItem('todoGroups');
@@ -30,7 +45,6 @@ export default function ToDo() {
         const parsed = JSON.parse(savedGroups);
         const validGroups = parsed.length ? parsed : [{ name: 'Allgemein', order: 1, showIfEmpty: true }];
         setGroups(validGroups);
-        // Fallback falls selectedGroup leer ist
         if (!selectedGroup || selectedGroup.trim() === '') {
           setSelectedGroup(validGroups[0].name);
         }
@@ -49,7 +63,17 @@ export default function ToDo() {
     try {
       const storedTodos = await AsyncStorage.getItem('todoList');
       if (storedTodos !== null) {
-        setTodoList(JSON.parse(storedTodos));
+        const parsed = JSON.parse(storedTodos);
+        const normalized = parsed.map((item, index) => ({
+          id: item.id || `${item.group || 'Allgemein'}-${index}-${item.text}`,
+          text: item.text,
+          completed: !!item.completed,
+          group: item.group || 'Allgemein',
+        }));
+        setTodoList(normalized);
+        if (parsed.some((item) => !item.id)) {
+          saveTodoList(normalized);
+        }
       }
     } catch (error) {
       console.error('Fehler beim Laden der To-Do-Liste', error);
@@ -70,10 +94,11 @@ export default function ToDo() {
       const updatedList = [
         ...todoList,
         {
+          id: Date.now().toString(),
           text: textInputValue.trim(),
           completed: false,
           group: cleanGroup,
-        }
+        },
       ];
       setTodoList(updatedList);
       saveTodoList(updatedList);
@@ -84,14 +109,13 @@ export default function ToDo() {
     }
   };
 
-  const toggleCompletion = (index) => {
-    const updatedList = [...todoList];
-    updatedList[index].completed = !updatedList[index].completed;
+  const toggleCompletion = (id) => {
+    const updatedList = todoList.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
     setTodoList(updatedList);
     saveTodoList(updatedList);
   };
 
-  const deleteTodoItem = (index) => {
+  const deleteTodoItem = (id) => {
     Alert.alert(
       'Eintrag löschen',
       'Möchtest du diesen Eintrag wirklich löschen?',
@@ -99,8 +123,9 @@ export default function ToDo() {
         { text: 'Abbrechen', style: 'cancel' },
         {
           text: 'Löschen',
+          style: 'destructive',
           onPress: () => {
-            const updatedList = todoList.filter((_, i) => i !== index);
+            const updatedList = todoList.filter((item) => item.id !== id);
             setTodoList(updatedList);
             saveTodoList(updatedList);
           },
@@ -110,13 +135,11 @@ export default function ToDo() {
     );
   };
 
-  const getTodosByGroup = (groupName) => {
-    return todoList.filter((todo) => todo.group === groupName);
-  };
+  const getTodosByGroup = (groupName) => todoList.filter((todo) => todo.group === groupName);
 
   return (
-    <LinearGradient colors={['#000000', '#1c1c1e']} style={styles.container}>
-      <ScrollView style={{ flex: 1 }}>
+    <LinearGradient colors={theme.backgroundGradient} style={styles.container}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, gap: 16 }}>
         {groups
           .sort((a, b) => a.order - b.order)
           .map((group, groupIndex) => {
@@ -124,80 +147,107 @@ export default function ToDo() {
             if (!groupTodos.length && !group.showIfEmpty) return null;
 
             return (
-              <View key={groupIndex} style={styles.groupSection}>
-                <Text style={styles.groupTitle}>{group.name || 'Unbenannt'}</Text>
-                {groupTodos.map((item, index) => {
-                  const absoluteIndex = todoList.findIndex(
-                    t => t.text === item.text && t.group === item.group
-                  );
-
-                  return (
+              <View
+                key={`${group.name}-${groupIndex}`}
+                style={[styles.groupSection, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}
+              >
+                <View style={styles.groupHeader}>
+                  <Text style={[styles.groupTitle, { color: theme.textPrimary }]}>{group.name || 'Unbenannt'}</Text>
+                  <Text style={[styles.groupCount, { color: theme.textSecondary }]}>{groupTodos.length} Aufgabe(n)</Text>
+                </View>
+                {groupTodos.length === 0 ? (
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Keine Einträge vorhanden.</Text>
+                ) : (
+                  groupTodos.map((item) => (
                     <Pressable
-                      key={index}
-                      onPress={() => toggleCompletion(absoluteIndex)}
-                      onLongPress={() => deleteTodoItem(absoluteIndex)}
+                      key={item.id}
+                      onPress={() => toggleCompletion(item.id)}
+                      onLongPress={() => deleteTodoItem(item.id)}
                       style={[
                         styles.todoItem,
-                        item.completed && styles.completedItem,
+                        {
+                          backgroundColor: theme.surfaceAlt,
+                          borderColor: theme.surfaceBorder,
+                        },
+                        item.completed && {
+                          borderColor: theme.accentSecondary,
+                          backgroundColor: `${theme.accentSecondary}22`,
+                        },
                       ]}
                     >
-                      <Text style={styles.todoText}>{item.text}</Text>
+                      <Text
+                        style={[
+                          styles.todoText,
+                          {
+                            color: theme.textPrimary,
+                            textDecorationLine: item.completed ? 'line-through' : 'none',
+                            opacity: item.completed ? 0.6 : 1,
+                          },
+                        ]}
+                      >
+                        {item.text}
+                      </Text>
                     </Pressable>
-                  );
-                })}
+                  ))
+                )}
               </View>
             );
           })}
       </ScrollView>
 
       <View style={styles.buttonview}>
-        <AddButton onPress={() => setModalVisible(true)} />
+        <AddButton onPress={() => setModalVisible(true)} title="Neue Aufgabe" />
       </View>
 
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalView}>
-          <TextInput
-            style={styles.input}
-            placeholder="Neuer To-Do-Punkt"
-            placeholderTextColor="#ccc"
-            value={textInputValue}
-            onChangeText={setTextInputValue}
-          />
-
-          <Text style={styles.modalLabel}>Gruppe:</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedGroup}
-              onValueChange={(itemValue) => setSelectedGroup(itemValue)}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
+      <Modal animationType="slide" transparent={false} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <LinearGradient colors={theme.backgroundGradient} style={styles.modalView}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Neue Aufgabe hinzufügen</Text>
+            <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Gruppe</Text>
+            <View style={[styles.pickerWrapper, { borderColor: theme.inputBorder, backgroundColor: theme.inputBackground }]}
             >
-              {groups
-                .sort((a, b) => a.order - b.order)
-                .map((group, index) => (
-                  <Picker.Item
-                    key={index}
-                    label={group.name || 'Unbenannt'}
-                    value={group.name}
-                  />
+              <Picker
+                selectedValue={selectedGroup}
+                onValueChange={(itemValue) => setSelectedGroup(itemValue)}
+                dropdownIconColor={theme.textPrimary}
+                style={{ color: theme.textPrimary }}
+              >
+                {groups.map((group) => (
+                  <Picker.Item key={group.name} label={group.name} value={group.name} color={theme.textPrimary} />
                 ))}
-            </Picker>
+              </Picker>
+            </View>
+            <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Aufgabe</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.inputBackground,
+                  color: theme.textPrimary,
+                  borderColor: theme.inputBorder,
+                },
+              ]}
+              placeholder="Was steht an?"
+              placeholderTextColor={theme.textSecondary}
+              value={textInputValue}
+              onChangeText={setTextInputValue}
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={[styles.secondaryButton, { borderColor: theme.surfaceBorder }]}
+              >
+                <Text style={[styles.secondaryButtonText, { color: theme.textSecondary }]}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={addTodoItem}
+                style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+              >
+                <Text style={[styles.primaryButtonText, { color: theme.buttonText }]}>Speichern</Text>
+              </Pressable>
+            </View>
           </View>
-
-          <View style={styles.buttonContainer}>
-            <Pressable onPress={() => setModalVisible(false)} style={styles.modalButton}>
-              <Text style={styles.modalButtonText}>Abbrechen</Text>
-            </Pressable>
-            <Pressable onPress={addTodoItem} style={styles.modalButton}>
-              <Text style={styles.modalButtonText}>Speichern</Text>
-            </Pressable>
-          </View>
-        </View>
+        </LinearGradient>
       </Modal>
     </LinearGradient>
   );
@@ -206,34 +256,42 @@ export default function ToDo() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     paddingTop: 60,
-    width: '100%',
+    paddingHorizontal: 20,
   },
   groupSection: {
-    marginBottom: 24,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    gap: 12,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   groupTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#f5f5f5',
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderColor: '#333',
-    paddingBottom: 4,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  groupCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   todoItem: {
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  completedItem: {
-    backgroundColor: '#1ba564',
-    opacity: 0.75,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   todoText: {
     fontSize: 16,
-    color: '#f5f5f5',
   },
   buttonview: {
     padding: 16,
@@ -241,55 +299,58 @@ const styles = StyleSheet.create({
   },
   modalView: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#1c1c1e',
-    padding: 20,
+    paddingTop: 80,
+    paddingHorizontal: 20,
   },
-  input: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#333',
-    backgroundColor: '#2c2c2e',
-    color: '#f5f5f5',
-    padding: 16,
-    marginBottom: 20,
+  modalContent: {
+    backgroundColor: 'transparent',
+    gap: 12,
   },
-  pickerContainer: {
-    backgroundColor: '#2c2c2e',
-    borderRadius: 6,
-    marginBottom: 20,
-    justifyContent: 'center',
-    height: 60,
-  },
-  picker: {
-    height: 60,
-    color: '#000000',
-    textAlign: 'center',
-  },
-  pickerItem: {
-    color: '#f5f5f5',
-    fontSize: 16,
-    textAlign: 'center',
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
   },
   modalLabel: {
-    color: '#f5f5f5',
-    fontSize: 16,
-    marginBottom: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  buttonContainer: {
+  pickerWrapper: {
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
   },
-  modalButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: '#b180f0',
-    borderRadius: 10,
-    margin: 5,
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
-  modalButtonText: {
-    color: '#fff',
+  secondaryButtonText: {
     fontSize: 16,
-    textAlign: 'center',
+    fontWeight: '600',
+  },
+  primaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

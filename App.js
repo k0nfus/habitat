@@ -1,50 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavigationContainer, DefaultTheme as NavigationDefaultTheme, DarkTheme as NavigationDarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ToDo from './components/To-Do';
 import Tagebuch from './components/Tagebuch';
 import Tracking from './components/Tracking';
 import Einstellungen from './components/Einstellungen';
-import { Ionicons } from '@expo/vector-icons'; 
-import { StatusBar } from 'expo-status-bar'; 
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeContext, themes } from './theme';
 
 const Tab = createBottomTabNavigator();
 
 export default function App() {
-  const [initialRoute, setInitialRoute] = useState(null);  // Standard auf null gesetzt, um Ladezustand zu erkennen
-  const [isLoading, setIsLoading] = useState(true);  // Ladezustand
+  const [initialRoute, setInitialRoute] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [themeMode, setThemeMode] = useState('dark');
 
   useEffect(() => {
-    const getStartseite = async () => {
+    const initialize = async () => {
       try {
-        const savedRoute = await AsyncStorage.getItem('startseite');
+        const [savedRoute, savedTheme] = await Promise.all([
+          AsyncStorage.getItem('startseite'),
+          AsyncStorage.getItem('appTheme'),
+        ]);
         if (savedRoute) {
-          setInitialRoute(savedRoute);  // Gespeicherte Startseite verwenden
+          setInitialRoute(savedRoute);
         } else {
-          setInitialRoute('Tagebuch');  // Fallback zur Standard-Startseite
+          setInitialRoute('Tagebuch');
+        }
+        if (savedTheme && themes[savedTheme]) {
+          setThemeMode(savedTheme);
         }
       } catch (error) {
-        console.error('Error loading start page', error);
-        setInitialRoute('Tagebuch');  // Fallback bei Fehler
+        console.error('Error loading app settings', error);
+        setInitialRoute('Tagebuch');
       } finally {
-        setIsLoading(false);  // Ladezustand beenden
+        setIsLoading(false);
       }
     };
 
-    getStartseite();
+    initialize();
   }, []);
 
+  const themeValue = useMemo(
+    () => ({
+      theme: themes[themeMode] || themes.dark,
+      mode: themeMode,
+      setMode: async (mode) => {
+        if (!themes[mode]) return;
+        setThemeMode(mode);
+        try {
+          await AsyncStorage.setItem('appTheme', mode);
+        } catch (error) {
+          console.error('Error saving theme', error);
+        }
+      },
+    }),
+    [themeMode]
+  );
+
   if (isLoading || initialRoute === null) {
-    return null;  // Hier kann ein Lade-Spinner oder eine andere Komponente hinzugefügt werden
+    return null;
   }
 
+  const currentTheme = themeValue.theme;
+  const navigationTheme = currentTheme.mode === 'dark' ? NavigationDarkTheme : NavigationDefaultTheme;
+
+  const mergedNavigationTheme = {
+    ...navigationTheme,
+    colors: {
+      ...navigationTheme.colors,
+      background: currentTheme.backgroundGradient[1],
+      card: currentTheme.tabBarBackground,
+      text: currentTheme.textPrimary,
+      border: currentTheme.surfaceBorder,
+      primary: currentTheme.accent,
+    },
+  };
+
   return (
-    <>
-      <StatusBar style="light" />
-      <NavigationContainer>
+    <ThemeContext.Provider value={themeValue}>
+      <StatusBar style={currentTheme.statusBarStyle} />
+      <NavigationContainer theme={mergedNavigationTheme}>
         <Tab.Navigator
-          initialRouteName={initialRoute}  // Die initiale Route basierend auf AsyncStorage
+          initialRouteName={initialRoute}
           screenOptions={({ route }) => ({
             tabBarShowLabel: false,
             tabBarIcon: ({ color, size }) => {
@@ -60,12 +100,13 @@ export default function App() {
               }
               return <Ionicons name={iconName} size={size} color={color} />;
             },
-            headerShown: false, 
+            headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#000000',
+              backgroundColor: currentTheme.tabBarBackground,
+              borderTopColor: currentTheme.surfaceBorder,
             },
-            tabBarActiveTintColor: '#FFA500',
-            tabBarInactiveTintColor: '#888888',
+            tabBarActiveTintColor: currentTheme.tabActive,
+            tabBarInactiveTintColor: currentTheme.tabInactive,
           })}
         >
           <Tab.Screen name="To-Do" component={ToDo} />
@@ -74,6 +115,6 @@ export default function App() {
           <Tab.Screen name="Einstellungen" component={Einstellungen} />
         </Tab.Navigator>
       </NavigationContainer>
-    </>
+    </ThemeContext.Provider>
   );
 }

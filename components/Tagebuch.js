@@ -164,7 +164,12 @@ export default function Tagebuch() {
   const [settings, setSettings] = useState(defaultDiarySettings);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentEntry, setCurrentEntry] = useState(null);
-  const [entryQueue, setEntryQueue] = useState([]);
+  const formatList = (items) => {
+    if (items.length <= 1) {
+      return items[0] || '';
+    }
+    return `${items.slice(0, -1).join(', ')} und ${items[items.length - 1]}`;
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -197,14 +202,6 @@ export default function Tagebuch() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (!entryQueue.length) return;
-    const [nextEntry, ...rest] = entryQueue;
-    setCurrentEntry(nextEntry);
-    setEntryQueue(rest);
-    setModalVisible(true);
-  }, [entryQueue]);
-
   const saveEntries = async (newEntries) => {
     try {
       const sorted = [...newEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -222,72 +219,87 @@ export default function Tagebuch() {
       : [merged, ...entries];
 
     saveEntries(updatedEntries);
-    if (entryQueue.length) {
-      const [nextEntry, ...rest] = entryQueue;
-      setCurrentEntry(nextEntry);
-      setEntryQueue(rest);
-    } else {
-      setModalVisible(false);
-      setCurrentEntry(null);
-    }
+    setModalVisible(false);
+    setCurrentEntry(null);
   };
 
   const ensureSettingsSynced = async () => {
     try {
       const storedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedSettings) {
-        setSettings(mergeSettings(defaultDiarySettings, JSON.parse(storedSettings)));
+        const merged = mergeSettings(defaultDiarySettings, JSON.parse(storedSettings));
+        setSettings(merged);
+        return merged;
       } else {
         await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultDiarySettings));
         setSettings(defaultDiarySettings);
+        return defaultDiarySettings;
       }
     } catch (error) {
       console.error('Fehler beim Synchronisieren der Einstellungen', error);
+      return settings;
     }
   };
 
   const hasEntryForPeriod = (type, periodKey) => entries.some((entry) => entry.type === type && entry.periodKey === periodKey);
 
   const handleNewEntry = async () => {
-    await ensureSettingsSynced();
+    const syncedSettings = await ensureSettingsSynced();
+    const activeSettings = syncedSettings || settings;
     const berlinNow = getBerlinDate();
-    const queue = [];
+    const creations = [];
 
-    const dailyDefinitions = getFieldDefinitions(settings, 'daily').filter((field) => field.enabled);
-    if (dailyDefinitions.length) {
-      queue.push(createEntryFromSettings('daily', settings, berlinNow));
+    const dailyDefinitions = getFieldDefinitions(activeSettings, 'daily').filter((field) => field.enabled);
+    const dailyKey = getDailyKey(berlinNow);
+    if (dailyDefinitions.length && !hasEntryForPeriod('daily', dailyKey)) {
+      creations.push(createEntryFromSettings('daily', activeSettings, berlinNow));
     }
 
     const isSunday = berlinNow.getDay() === 0;
     const isFirstDay = berlinNow.getDate() === 1;
 
-    if (settings.weekly.enabled && settings.weekly.autoCreate && isSunday) {
+    if (activeSettings.weekly.enabled && activeSettings.weekly.autoCreate && isSunday) {
       const weekKey = getWeekKey(berlinNow);
       if (!hasEntryForPeriod('weekly', weekKey)) {
-        queue.push(createEntryFromSettings('weekly', settings, berlinNow));
+        creations.push(createEntryFromSettings('weekly', activeSettings, berlinNow));
       }
     }
 
-    if (settings.monthly.enabled && settings.monthly.autoCreate && isFirstDay) {
+    if (activeSettings.monthly.enabled && activeSettings.monthly.autoCreate && isFirstDay) {
       const monthKey = getMonthKey(berlinNow);
       if (!hasEntryForPeriod('monthly', monthKey)) {
-        queue.push(createEntryFromSettings('monthly', settings, berlinNow));
+        creations.push(createEntryFromSettings('monthly', activeSettings, berlinNow));
       }
     }
 
-    if (!queue.length) {
-      Alert.alert('Hinweis', 'Es sind keine aktiven Felder für neue Einträge konfiguriert.');
+    if (!creations.length) {
+      Alert.alert('Hinweis', 'Für den aktuellen Zeitraum existieren bereits alle Einträge oder es sind keine Felder aktiviert.');
       return;
     }
 
-    setEntryQueue(queue);
+    const createdTypes = creations.map((entry) => entry.type);
+    const readableTypes = createdTypes.map((type) =>
+      type === 'daily'
+        ? 'ein täglicher Eintrag'
+        : type === 'weekly'
+        ? 'ein wöchentlicher Rückblick'
+        : 'eine monatliche Reflexion'
+    );
+
+    await saveEntries([...creations, ...entries]);
+
+    Alert.alert(
+      'Einträge erstellt',
+      `Es wurde${creations.length > 1 ? 'n' : ''} ${formatList(readableTypes)} erstellt.`
+    );
   };
 
   const editEntry = async (id) => {
-    await ensureSettingsSynced();
+    const syncedSettings = await ensureSettingsSynced();
+    const activeSettings = syncedSettings || settings;
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
-    const merged = mergeEntryWithSettings(entry, settings);
+    const merged = mergeEntryWithSettings(entry, activeSettings);
     setCurrentEntry(merged);
     setModalVisible(true);
   };
@@ -411,7 +423,6 @@ export default function Tagebuch() {
             onPress={() => {
               setModalVisible(false);
               setCurrentEntry(null);
-              setEntryQueue([]);
             }}
             style={[styles.secondaryButton, { borderColor: theme.surfaceBorder }]}
           >

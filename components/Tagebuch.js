@@ -36,8 +36,16 @@ const ENTRY_TITLES = {
 
 const getBerlinDate = () => {
   const now = new Date();
-  const berlinString = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
-  return new Date(berlinString);
+  try {
+    const berlinString = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
+    const berlinDate = new Date(berlinString);
+    if (!Number.isNaN(berlinDate.getTime())) {
+      return berlinDate;
+    }
+  } catch (error) {
+    console.warn('Falling back to device time while resolving Berlin timezone', error);
+  }
+  return now;
 };
 
 const getDailyKey = (date) => date.toISOString().split('T')[0];

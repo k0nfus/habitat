@@ -15,6 +15,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import AddButton from './AddButton';
 import { useTheme } from '../theme';
+import {
+  defaultQuickAccessSettings,
+  QUICK_ACCESS_STORAGE_KEY,
+  alignQuickAccessGroups,
+} from '../constants/todoQuickAccessDefaults';
 
 export default function ToDo() {
   const { theme } = useTheme();
@@ -23,11 +28,13 @@ export default function ToDo() {
   const [selectedGroup, setSelectedGroup] = useState('Allgemein');
   const [todoList, setTodoList] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [quickAccessSettings, setQuickAccessSettings] = useState(defaultQuickAccessSettings);
 
   useFocusEffect(
     useCallback(() => {
       loadGroups();
       loadTodoList();
+      loadQuickAccessSettings();
     }, [])
   );
 
@@ -45,6 +52,13 @@ export default function ToDo() {
         const parsed = JSON.parse(savedGroups);
         const validGroups = parsed.length ? parsed : [{ name: 'Allgemein', order: 1, showIfEmpty: true }];
         setGroups(validGroups);
+        setQuickAccessSettings((current) => {
+          const { settings, changed } = alignQuickAccessGroups(current, validGroups);
+          if (changed) {
+            AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
+          }
+          return settings;
+        });
         if (!selectedGroup || selectedGroup.trim() === '') {
           setSelectedGroup(validGroups[0].name);
         }
@@ -53,6 +67,11 @@ export default function ToDo() {
         setGroups(fallback);
         await AsyncStorage.setItem('todoGroups', JSON.stringify(fallback));
         setSelectedGroup('Allgemein');
+        setQuickAccessSettings((current) => {
+          const { settings } = alignQuickAccessGroups(current, fallback);
+          AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
+          return settings;
+        });
       }
     } catch (error) {
       console.error('Fehler beim Laden der Gruppen', error);
@@ -77,6 +96,22 @@ export default function ToDo() {
       }
     } catch (error) {
       console.error('Fehler beim Laden der To-Do-Liste', error);
+    }
+  };
+
+  const loadQuickAccessSettings = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(QUICK_ACCESS_STORAGE_KEY);
+      if (!groups.length) {
+        const normalized = raw ? { ...defaultQuickAccessSettings, ...JSON.parse(raw) } : defaultQuickAccessSettings;
+        setQuickAccessSettings(normalized);
+      } else {
+        const { settings } = alignQuickAccessGroups(raw ? JSON.parse(raw) : defaultQuickAccessSettings, groups);
+        setQuickAccessSettings(settings);
+        await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Schnellzugriff-Einstellungen', error);
     }
   };
 
@@ -140,6 +175,39 @@ export default function ToDo() {
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.container}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, gap: 16 }}>
+        {quickAccessSettings.enabled && (
+          <View
+            style={[
+              styles.quickAccessCard,
+              { backgroundColor: theme.surfaceAlt, borderColor: theme.surfaceBorder },
+            ]}
+          >
+            <Text style={[styles.quickAccessTitle, { color: theme.textPrimary }]}>Schnellzugriff aktiv</Text>
+            <Text style={[styles.quickAccessDescription, { color: theme.textSecondary }]}>Diese Gruppen sind für Widgets oder die Statusleiste freigegeben:</Text>
+            {Object.entries(quickAccessSettings.groupVisibility)
+              .filter(([, value]) => value)
+              .map(([name]) => (
+                <Text key={name} style={[styles.quickAccessGroup, { color: theme.textPrimary }]}>
+                  • {name}
+                </Text>
+              ))}
+            {Object.values(quickAccessSettings.groupVisibility).every((value) => !value) && (
+              <Text style={[styles.quickAccessGroup, { color: theme.textSecondary }]}>Noch keine Gruppe ausgewählt.</Text>
+            )}
+            <View style={styles.quickAccessBadges}>
+              {quickAccessSettings.widgetEnabled && (
+                <View style={[styles.badge, { backgroundColor: `${theme.accent}22`, borderColor: theme.accent }]}>
+                  <Text style={[styles.badgeText, { color: theme.accent }]}>Widget</Text>
+                </View>
+              )}
+              {quickAccessSettings.statusBarEnabled && (
+                <View style={[styles.badge, { backgroundColor: `${theme.accentSecondary}22`, borderColor: theme.accentSecondary }]}>
+                  <Text style={[styles.badgeText, { color: theme.accentSecondary }]}>Statusleiste</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
         {groups
           .sort((a, b) => a.order - b.order)
           .map((group, groupIndex) => {
@@ -351,6 +419,37 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  quickAccessCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+  },
+  quickAccessTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  quickAccessDescription: {
+    fontSize: 14,
+  },
+  quickAccessGroup: {
+    fontSize: 14,
+  },
+  quickAccessBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  badgeText: {
+    fontSize: 12,
     fontWeight: '600',
   },
 });

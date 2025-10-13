@@ -14,6 +14,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { defaultDiarySettings } from '../constants/diaryDefaults';
+import {
+  defaultQuickAccessSettings,
+  QUICK_ACCESS_STORAGE_KEY,
+  alignQuickAccessGroups,
+} from '../constants/todoQuickAccessDefaults';
 
 const SETTINGS_STORAGE_KEY = 'diarySettings';
 
@@ -42,26 +47,38 @@ export default function Einstellungen() {
   const [minSteps, setMinSteps] = useState('');
   const [groups, setGroups] = useState([]);
   const [diarySettings, setDiarySettings] = useState(() => clone(defaultDiarySettings));
+  const [quickAccessSettings, setQuickAccessSettings] = useState(defaultQuickAccessSettings);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const [savedStartseite, savedGoalWeight, savedMinSteps, savedGroups, savedDiarySettings] = await Promise.all([
+        const [
+          savedStartseite,
+          savedGoalWeight,
+          savedMinSteps,
+          savedGroups,
+          savedDiarySettings,
+          savedQuickAccessSettings,
+        ] = await Promise.all([
           AsyncStorage.getItem('startseite'),
           AsyncStorage.getItem('goalWeight'),
           AsyncStorage.getItem('minSteps'),
           AsyncStorage.getItem('todoGroups'),
           AsyncStorage.getItem(SETTINGS_STORAGE_KEY),
+          AsyncStorage.getItem(QUICK_ACCESS_STORAGE_KEY),
         ]);
 
         if (savedStartseite) setSelectedStartseite(savedStartseite);
         if (savedGoalWeight) setGoalWeight(savedGoalWeight);
         if (savedMinSteps) setMinSteps(savedMinSteps);
+        let loadedGroups;
         if (savedGroups) {
           const parsed = JSON.parse(savedGroups);
-          setGroups(parsed.length ? parsed : defaultGroups());
+          loadedGroups = parsed.length ? parsed : defaultGroups();
+          setGroups(loadedGroups);
         } else {
           const defaults = defaultGroups();
+          loadedGroups = defaults;
           setGroups(defaults);
           await AsyncStorage.setItem('todoGroups', JSON.stringify(defaults));
         }
@@ -69,6 +86,15 @@ export default function Einstellungen() {
           setDiarySettings(mergeSettings(defaultDiarySettings, JSON.parse(savedDiarySettings)));
         } else {
           await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultDiarySettings));
+        }
+        if (savedQuickAccessSettings) {
+          const parsed = JSON.parse(savedQuickAccessSettings);
+          const { settings } = alignQuickAccessGroups(parsed, loadedGroups || defaultGroups());
+          setQuickAccessSettings(settings);
+        } else {
+          const { settings } = alignQuickAccessGroups(defaultQuickAccessSettings, loadedGroups || defaultGroups());
+          setQuickAccessSettings(settings);
+          await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
         }
       } catch (error) {
         console.error('Fehler beim Laden der Einstellungen', error);
@@ -110,6 +136,13 @@ export default function Einstellungen() {
   const updateGroups = async (newGroups) => {
     setGroups(newGroups);
     await AsyncStorage.setItem('todoGroups', JSON.stringify(newGroups));
+    setQuickAccessSettings((current) => {
+      const { settings, changed } = alignQuickAccessGroups(current, newGroups);
+      if (changed) {
+        AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
+      }
+      return settings;
+    });
   };
 
   const handleGroupChange = (index, field, value) => {
@@ -122,6 +155,40 @@ export default function Einstellungen() {
       updated[index][field] = value;
     }
     updateGroups(updated);
+  };
+
+  const persistQuickAccessSettings = async (settingsToSave) => {
+    setQuickAccessSettings(settingsToSave);
+    await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settingsToSave));
+  };
+
+  const toggleQuickAccessEnabled = async () => {
+    const next = {
+      ...quickAccessSettings,
+      enabled: !quickAccessSettings.enabled,
+      widgetEnabled: quickAccessSettings.enabled ? false : quickAccessSettings.widgetEnabled,
+      statusBarEnabled: quickAccessSettings.enabled ? false : quickAccessSettings.statusBarEnabled,
+    };
+    await persistQuickAccessSettings(next);
+  };
+
+  const toggleQuickAccessOption = async (key) => {
+    if (!quickAccessSettings.enabled) return;
+    const next = { ...quickAccessSettings, [key]: !quickAccessSettings[key] };
+    await persistQuickAccessSettings(next);
+  };
+
+  const toggleQuickAccessGroup = async (groupName) => {
+    if (!quickAccessSettings.enabled) return;
+    const currentValue = quickAccessSettings.groupVisibility[groupName];
+    const next = {
+      ...quickAccessSettings,
+      groupVisibility: {
+        ...quickAccessSettings.groupVisibility,
+        [groupName]: !currentValue,
+      },
+    };
+    await persistQuickAccessSettings(next);
   };
 
   const addGroup = () => {
@@ -388,6 +455,54 @@ export default function Einstellungen() {
         </View>
 
         <View style={sectionStyle}>
+          <Text style={textStyle}>To-Do-Schnellzugriff</Text>
+          <Text style={[styles.helperText, { color: theme.textSecondary }]}>
+            Lege fest, ob ausgewählte Gruppen für ein Widget oder Schnellzugriff außerhalb der App
+            bereitgestellt werden sollen.
+          </Text>
+          {renderToggleRow('Schnellzugriff aktivieren', quickAccessSettings.enabled, toggleQuickAccessEnabled)}
+          <View
+            style={quickAccessSettings.enabled ? null : styles.disabledBlock}
+            pointerEvents={quickAccessSettings.enabled ? 'auto' : 'none'}
+          >
+            {renderToggleRow(
+              'Für Homescreen-Widget vorbereiten',
+              quickAccessSettings.widgetEnabled,
+              () => toggleQuickAccessOption('widgetEnabled'),
+            )}
+            {renderToggleRow(
+              'Für Statusleiste vorbereiten',
+              quickAccessSettings.statusBarEnabled,
+              () => toggleQuickAccessOption('statusBarEnabled'),
+            )}
+            <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freigegebene Gruppen</Text>
+            {groups
+              .sort((a, b) => a.order - b.order)
+              .map((group) => {
+                const groupName = group.name || 'Allgemein';
+                return (
+                  <Pressable
+                    key={`quick-${groupName}`}
+                    onPress={() => toggleQuickAccessGroup(groupName)}
+                    disabled={!quickAccessSettings.enabled}
+                  >
+                    <View style={styles.option}>
+                      <Checkbox
+                        style={styles.checkbox}
+                        value={!!quickAccessSettings.groupVisibility[groupName]}
+                        onValueChange={() => toggleQuickAccessGroup(groupName)}
+                        color={quickAccessSettings.groupVisibility[groupName] ? theme.accent : undefined}
+                        disabled={!quickAccessSettings.enabled}
+                      />
+                      <Text style={paragraphStyle}>{groupName}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+          </View>
+        </View>
+
+        <View style={sectionStyle}>
           <Text style={textStyle}>To-Do-Gruppen</Text>
           {groups
             .sort((a, b) => a.order - b.order)
@@ -536,5 +651,13 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  helperText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  disabledBlock: {
+    opacity: 0.5,
   },
 });

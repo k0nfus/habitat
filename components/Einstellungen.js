@@ -460,6 +460,10 @@ export default function Einstellungen() {
             Lege fest, ob ausgewählte Gruppen für ein Widget oder Schnellzugriff außerhalb der App
             bereitgestellt werden sollen.
           </Text>
+          <Text style={[styles.helperNote, { color: theme.textSecondary }]}>
+            Hinweis: In der Expo-Testumgebung stehen Widgets und Statusleisten-Einträge nicht zur Verfügung.
+            Diese Funktion funktioniert erst in einem eigenständig installierten App-Build.
+          </Text>
           {renderToggleRow('Schnellzugriff aktivieren', quickAccessSettings.enabled, toggleQuickAccessEnabled)}
           <View
             style={quickAccessSettings.enabled ? null : styles.disabledBlock}
@@ -632,13 +636,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    gap: 6,
   },
   toggleLabel: {
     fontSize: 16,
+    textAlign: 'center',
   },
   secondaryButton: {
     borderWidth: 1,
@@ -656,6 +660,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
+  },
+  helperNote: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   disabledBlock: {
     opacity: 0.5,

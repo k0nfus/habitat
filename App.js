@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeContext, themes } from './theme';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 
@@ -80,10 +81,11 @@ export default function App() {
   };
 
   return (
-    <ThemeContext.Provider value={themeValue}>
-      <StatusBar style={currentTheme.statusBarStyle} />
-      <NavigationContainer theme={mergedNavigationTheme}>
-        <Tab.Navigator
+    <SafeAreaProvider>
+      <ThemeContext.Provider value={themeValue}>
+        <StatusBar style={currentTheme.statusBarStyle} />
+        <NavigationContainer theme={mergedNavigationTheme}>
+          <Tab.Navigator
           initialRouteName={initialRoute}
           screenOptions={({ route }) => ({
             tabBarShowLabel: false,
@@ -109,12 +111,13 @@ export default function App() {
             tabBarInactiveTintColor: currentTheme.tabInactive,
           })}
         >
-          <Tab.Screen name="To-Do" component={ToDo} />
-          <Tab.Screen name="Tagebuch" component={Tagebuch} />
-          <Tab.Screen name="Tracking" component={Tracking} />
-          <Tab.Screen name="Einstellungen" component={Einstellungen} />
-        </Tab.Navigator>
-      </NavigationContainer>
-    </ThemeContext.Provider>
+            <Tab.Screen name="To-Do" component={ToDo} />
+            <Tab.Screen name="Tagebuch" component={Tagebuch} />
+            <Tab.Screen name="Tracking" component={Tracking} />
+            <Tab.Screen name="Einstellungen" component={Einstellungen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </ThemeContext.Provider>
+    </SafeAreaProvider>
   );
 }

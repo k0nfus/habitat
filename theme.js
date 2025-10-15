@@ -17,7 +17,7 @@ export const themes = {
     buttonText: '#ffffff',
     tabBarBackground: '#050505',
     tabActive: '#6c5ce7',
-    tabInactive: '#6c5ce733',
+    tabInactive: '#a8a2f2',
     statusBarStyle: 'light',
   },
   light: {
@@ -36,7 +36,7 @@ export const themes = {
     buttonText: '#ffffff',
     tabBarBackground: '#ffffff',
     tabActive: '#4c5bd4',
-    tabInactive: '#4c5bd466',
+    tabInactive: '#7f8ae0',
     statusBarStyle: 'dark',
   },
 };

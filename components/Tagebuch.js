@@ -17,6 +17,7 @@ import Slider from '@react-native-community/slider';
 import AddButton from './AddButton';
 import { useTheme } from '../theme';
 import { DATA_VERSION, defaultDiarySettings } from '../constants/diaryDefaults';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ENTRY_STORAGE_KEY = 'diaryEntriesV2';
 const SETTINGS_STORAGE_KEY = 'diarySettings';
@@ -168,6 +169,7 @@ const mergeEntryWithSettings = (entry, settings) => {
 
 export default function Tagebuch() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState([]);
   const [settings, setSettings] = useState(defaultDiarySettings);
   const [modalVisible, setModalVisible] = useState(false);
@@ -416,7 +418,7 @@ export default function Tagebuch() {
     if (!currentEntry) return null;
     return (
       <LinearGradient colors={theme.backgroundGradient} style={styles.modalContainer}>
-        <ScrollView contentContainerStyle={styles.modalScroll}>
+        <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 120 + insets.bottom }]}>
           <View style={styles.modalHeader}>
             <Image source={ICONS[currentEntry.type]} style={styles.modalIcon} />
             <View>
@@ -426,7 +428,14 @@ export default function Tagebuch() {
           </View>
           {currentEntry.fields.map(renderEntryField)}
         </ScrollView>
-        <View style={styles.buttonRow}>
+        <View
+          style={[
+            styles.buttonRow,
+            {
+              paddingBottom: 20 + insets.bottom,
+            },
+          ]}
+        >
           <Pressable
             onPress={() => {
               setModalVisible(false);
@@ -445,7 +454,7 @@ export default function Tagebuch() {
         </View>
       </LinearGradient>
     );
-  }, [currentEntry, theme]);
+  }, [currentEntry, theme, insets]);
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.main}>
@@ -454,11 +463,11 @@ export default function Tagebuch() {
           data={entries}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 120 + insets.bottom }]}
         />
       </View>
 
-      <View style={styles.buttonview}>
+      <View style={[styles.buttonview, { paddingBottom: 16 + insets.bottom }]}>
         <AddButton onPress={handleNewEntry} title="Neuer Eintrag" />
       </View>
 

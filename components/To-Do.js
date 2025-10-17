@@ -181,39 +181,6 @@ export default function ToDo() {
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.container}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120, gap: 16 }}>
-        {quickAccessSettings.enabled && (
-          <View
-            style={[
-              styles.quickAccessCard,
-              { backgroundColor: theme.surfaceAlt, borderColor: theme.surfaceBorder },
-            ]}
-          >
-            <Text style={[styles.quickAccessTitle, { color: theme.textPrimary }]}>Schnellzugriff aktiv</Text>
-            <Text style={[styles.quickAccessDescription, { color: theme.textSecondary }]}>Diese Gruppen sind für Widgets oder die Statusleiste freigegeben:</Text>
-            {Object.entries(quickAccessSettings.groupVisibility)
-              .filter(([, value]) => value)
-              .map(([name]) => (
-                <Text key={name} style={[styles.quickAccessGroup, { color: theme.textPrimary }]}>
-                  • {name}
-                </Text>
-              ))}
-            {Object.values(quickAccessSettings.groupVisibility).every((value) => !value) && (
-              <Text style={[styles.quickAccessGroup, { color: theme.textSecondary }]}>Noch keine Gruppe ausgewählt.</Text>
-            )}
-            <View style={styles.quickAccessBadges}>
-              {quickAccessSettings.widgetEnabled && (
-                <View style={[styles.badge, { backgroundColor: `${theme.accent}22`, borderColor: theme.accent }]}>
-                  <Text style={[styles.badgeText, { color: theme.accent }]}>Widget</Text>
-                </View>
-              )}
-              {quickAccessSettings.statusBarEnabled && (
-                <View style={[styles.badge, { backgroundColor: `${theme.accentSecondary}22`, borderColor: theme.accentSecondary }]}>
-                  <Text style={[styles.badgeText, { color: theme.accentSecondary }]}>Statusleiste</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
         {groups
           .sort((a, b) => a.order - b.order)
           .map((group, groupIndex) => {

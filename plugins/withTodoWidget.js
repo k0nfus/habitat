@@ -158,7 +158,17 @@ class TodoWidgetModule : Module() {
   }
 
   private fun getApplicationContext(): Context? {
-    return appContext.reactContext ?: appContext.currentActivity ?: appContext.context
+    val reactContext = appContext.reactContext
+    if (reactContext != null) {
+      return reactContext.applicationContext
+    }
+
+    val activity = appContext.currentActivity
+    if (activity != null) {
+      return activity.applicationContext ?: activity
+    }
+
+    return null
   }
 }
 `;

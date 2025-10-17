@@ -68,12 +68,6 @@ export const syncTodoWidgetState = async (todos, quickAccessSettings, groups) =>
   }
 
   try {
-    const shouldShow = quickAccessSettings?.enabled && quickAccessSettings.widgetEnabled;
-    if (!shouldShow) {
-      await todoWidgetModule?.clearWidgetState?.();
-      return;
-    }
-
     const payload = buildWidgetPayload(todos, quickAccessSettings, groups);
     await todoWidgetModule?.setWidgetState?.(JSON.stringify(payload));
   } catch (error) {

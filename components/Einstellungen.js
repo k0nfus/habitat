@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Modal,
   TextInput,
   Alert,
   Switch,
@@ -49,6 +50,10 @@ export default function Einstellungen() {
   const [groups, setGroups] = useState([]);
   const [diarySettings, setDiarySettings] = useState(() => clone(defaultDiarySettings));
   const [quickAccessSettings, setQuickAccessSettings] = useState(defaultQuickAccessSettings);
+  const [dailyModalVisible, setDailyModalVisible] = useState(false);
+  const [weeklyModalVisible, setWeeklyModalVisible] = useState(false);
+  const [monthlyModalVisible, setMonthlyModalVisible] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -88,15 +93,20 @@ export default function Einstellungen() {
         } else {
           await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultDiarySettings));
         }
+        let resolvedQuickAccessSettings;
         if (savedQuickAccessSettings) {
           const parsed = JSON.parse(savedQuickAccessSettings);
           const { settings } = alignQuickAccessGroups(parsed, loadedGroups || defaultGroups());
-          setQuickAccessSettings(settings);
+          resolvedQuickAccessSettings = settings;
         } else {
           const { settings } = alignQuickAccessGroups(defaultQuickAccessSettings, loadedGroups || defaultGroups());
-          setQuickAccessSettings(settings);
+          resolvedQuickAccessSettings = settings;
           await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
         }
+        setQuickAccessSettings(resolvedQuickAccessSettings);
+        syncTodoWidgetFromStorage(resolvedQuickAccessSettings).catch((error) =>
+          console.warn('Widget konnte nicht aktualisiert werden', error)
+        );
       } catch (error) {
         console.error('Fehler beim Laden der Einstellungen', error);
       }
@@ -162,31 +172,24 @@ export default function Einstellungen() {
   };
 
   const persistQuickAccessSettings = async (settingsToSave) => {
-    setQuickAccessSettings(settingsToSave);
-    await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settingsToSave));
-    syncTodoWidgetFromStorage(settingsToSave).catch((error) =>
+    const normalized = {
+      ...settingsToSave,
+      enabled: true,
+      widgetEnabled: true,
+    };
+    setQuickAccessSettings(normalized);
+    await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(normalized));
+    syncTodoWidgetFromStorage(normalized).catch((error) =>
       console.warn('Widget konnte nicht aktualisiert werden', error)
     );
   };
 
-  const toggleQuickAccessEnabled = async () => {
-    const next = {
-      ...quickAccessSettings,
-      enabled: !quickAccessSettings.enabled,
-      widgetEnabled: quickAccessSettings.enabled ? false : quickAccessSettings.widgetEnabled,
-      statusBarEnabled: quickAccessSettings.enabled ? false : quickAccessSettings.statusBarEnabled,
-    };
-    await persistQuickAccessSettings(next);
-  };
-
   const toggleQuickAccessOption = async (key) => {
-    if (!quickAccessSettings.enabled) return;
     const next = { ...quickAccessSettings, [key]: !quickAccessSettings[key] };
     await persistQuickAccessSettings(next);
   };
 
   const toggleQuickAccessGroup = async (groupName) => {
-    if (!quickAccessSettings.enabled) return;
     const currentValue = quickAccessSettings.groupVisibility[groupName];
     const next = {
       ...quickAccessSettings,
@@ -272,6 +275,208 @@ export default function Einstellungen() {
     </View>
   );
 
+  const renderDailyEditorContent = () => (
+    <View>
+      {diarySettings.daily.fields.map((field, index) => (
+        <View key={field.id} style={styles.fieldRow}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Feld ${index + 1}`}</Text>
+            <Switch
+              value={field.enabled}
+              onValueChange={() => handleFieldToggle('daily', index)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+              thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+            />
+          </View>
+          <TextInput
+            style={inputStyle}
+            value={field.label}
+            onChangeText={(value) => handleFieldLabelChange('daily', index, value)}
+          />
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderWeeklyEditorContent = () => (
+    <View>
+      {renderToggleRow('Aktiviert', diarySettings.weekly.enabled, () => handleWeeklyToggle('enabled'))}
+      {renderToggleRow('Automatisch am Sonntag erzeugen', diarySettings.weekly.autoCreate, () => handleWeeklyToggle('autoCreate'))}
+
+      <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
+      {diarySettings.weekly.ratingFields.map((field, index) => (
+        <View key={field.id} style={styles.fieldRow}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
+            <Switch
+              value={field.enabled}
+              onValueChange={() => handleFieldToggle('weeklyRating', index)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+              thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+            />
+          </View>
+          <TextInput
+            style={inputStyle}
+            value={field.label}
+            onChangeText={(value) => handleFieldLabelChange('weeklyRating', index, value)}
+          />
+        </View>
+      ))}
+
+      <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
+      {diarySettings.weekly.textFields.map((field, index) => (
+        <View key={field.id} style={styles.fieldRow}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
+            <Switch
+              value={field.enabled}
+              onValueChange={() => handleFieldToggle('weeklyText', index)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+              thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+            />
+          </View>
+          <TextInput
+            style={inputStyle}
+            value={field.label}
+            onChangeText={(value) => handleFieldLabelChange('weeklyText', index, value)}
+          />
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderMonthlyEditorContent = () => (
+    <View>
+      {renderToggleRow('Aktiviert', diarySettings.monthly.enabled, () => handleMonthlyToggle('enabled'))}
+      {renderToggleRow('Automatisch am 1. erzeugen', diarySettings.monthly.autoCreate, () => handleMonthlyToggle('autoCreate'))}
+
+      <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
+      {diarySettings.monthly.ratingFields.map((field, index) => (
+        <View key={field.id} style={styles.fieldRow}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
+            <Switch
+              value={field.enabled}
+              onValueChange={() => handleFieldToggle('monthlyRating', index)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+              thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+            />
+          </View>
+          <TextInput
+            style={inputStyle}
+            value={field.label}
+            onChangeText={(value) => handleFieldLabelChange('monthlyRating', index, value)}
+          />
+        </View>
+      ))}
+
+      <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
+      {diarySettings.monthly.textFields.map((field, index) => (
+        <View key={field.id} style={styles.fieldRow}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
+            <Switch
+              value={field.enabled}
+              onValueChange={() => handleFieldToggle('monthlyText', index)}
+              trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
+              thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
+            />
+          </View>
+          <TextInput
+            style={inputStyle}
+            value={field.label}
+            onChangeText={(value) => handleFieldLabelChange('monthlyText', index, value)}
+          />
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderDiaryPreviewContent = () => {
+    const activeDailyFields = diarySettings.daily.fields.filter((field) => field.enabled);
+    const activeWeeklyRating = diarySettings.weekly.ratingFields.filter((field) => field.enabled);
+    const activeWeeklyText = diarySettings.weekly.textFields.filter((field) => field.enabled);
+    const activeMonthlyRating = diarySettings.monthly.ratingFields.filter((field) => field.enabled);
+    const activeMonthlyText = diarySettings.monthly.textFields.filter((field) => field.enabled);
+
+    const renderPreviewField = (label, key) => (
+      <View key={key} style={styles.previewItem}>
+        <Text style={[styles.previewLabel, { color: theme.textPrimary }]}>{label || 'Unbenanntes Feld'}</Text>
+        <View style={[styles.previewInputLine, { borderColor: theme.surfaceBorder }]} />
+      </View>
+    );
+
+    return (
+      <ScrollView
+        style={styles.previewScroll}
+        contentContainerStyle={styles.previewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[styles.previewDate, { color: theme.textSecondary }]}>01.01.2025</Text>
+        <View style={styles.previewSection}>
+          <Text style={[styles.previewSectionTitle, { color: theme.textSecondary }]}>Täglicher Eintrag</Text>
+          {activeDailyFields.length ? (
+            activeDailyFields.map((field, index) => renderPreviewField(field.label, `daily-${field.id}-${index}`))
+          ) : (
+            <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Keine Felder aktiviert.</Text>
+          )}
+        </View>
+
+        <View style={styles.previewSection}>
+          <Text style={[styles.previewSectionTitle, { color: theme.textSecondary }]}>Wöchentlicher Rückblick</Text>
+          {diarySettings.weekly.enabled ? (
+            <>
+              <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Bewertungsskala 1 – 5</Text>
+              {activeWeeklyRating.length ? (
+                activeWeeklyRating.map((field, index) => (
+                  <View key={`weekly-rating-${field.id}-${index}`} style={styles.previewItem}>
+                    <Text style={[styles.previewLabel, { color: theme.textPrimary }]}>{field.label || 'Unbenannte Bewertung'}</Text>
+                    <Text style={[styles.previewScale, { color: theme.textSecondary }]}>1   2   3   4   5</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Keine Bewertungen aktiviert.</Text>
+              )}
+              {activeWeeklyText.length ? (
+                activeWeeklyText.map((field, index) => renderPreviewField(field.label, `weekly-text-${field.id}-${index}`))
+              ) : (
+                <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Keine Fragen aktiviert.</Text>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Deaktiviert.</Text>
+          )}
+        </View>
+
+        <View style={styles.previewSection}>
+          <Text style={[styles.previewSectionTitle, { color: theme.textSecondary }]}>Monatliche Reflexion</Text>
+          {diarySettings.monthly.enabled ? (
+            <>
+              <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Bewertungsskala 1 – 5</Text>
+              {activeMonthlyRating.length ? (
+                activeMonthlyRating.map((field, index) => (
+                  <View key={`monthly-rating-${field.id}-${index}`} style={styles.previewItem}>
+                    <Text style={[styles.previewLabel, { color: theme.textPrimary }]}>{field.label || 'Unbenannte Bewertung'}</Text>
+                    <Text style={[styles.previewScale, { color: theme.textSecondary }]}>1   2   3   4   5</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Keine Bewertungen aktiviert.</Text>
+              )}
+              {activeMonthlyText.length ? (
+                activeMonthlyText.map((field, index) => renderPreviewField(field.label, `monthly-text-${field.id}-${index}`))
+              ) : (
+                <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Keine Fragen aktiviert.</Text>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.previewHint, { color: theme.textSecondary }]}>Deaktiviert.</Text>
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
   const sectionStyle = [styles.settingView, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }];
   const textStyle = [styles.text, { color: theme.textPrimary }];
   const paragraphStyle = [styles.paragraph, { color: theme.textPrimary }];
@@ -283,6 +488,11 @@ export default function Einstellungen() {
       color: theme.textPrimary,
     },
   ];
+  const activeDailyCount = diarySettings.daily.fields.filter((field) => field.enabled).length;
+  const activeWeeklyRatingCount = diarySettings.weekly.ratingFields.filter((field) => field.enabled).length;
+  const activeWeeklyTextCount = diarySettings.weekly.textFields.filter((field) => field.enabled).length;
+  const activeMonthlyRatingCount = diarySettings.monthly.ratingFields.filter((field) => field.enabled).length;
+  const activeMonthlyTextCount = diarySettings.monthly.textFields.filter((field) => field.enabled).length;
 
   return (
     <LinearGradient colors={theme.backgroundGradient} style={styles.container}>
@@ -329,116 +539,58 @@ export default function Einstellungen() {
 
         <View style={sectionStyle}>
           <Text style={textStyle}>Tägliche Eingabefelder</Text>
-          {diarySettings.daily.fields.map((field, index) => (
-            <View key={field.id} style={styles.fieldRow}>
-              <View style={styles.fieldHeader}>
-                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Feld ${index + 1}`}</Text>
-                <Switch
-                  value={field.enabled}
-                  onValueChange={() => handleFieldToggle('daily', index)}
-                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
-                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
-                />
-              </View>
-              <TextInput
-                style={inputStyle}
-                value={field.label}
-                onChangeText={(value) => handleFieldLabelChange('daily', index, value)}
-              />
-            </View>
-          ))}
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+            {`${activeDailyCount} von ${diarySettings.daily.fields.length} Feldern aktiv.`}
+          </Text>
+          <Pressable
+            onPress={() => setDailyModalVisible(true)}
+            style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.buttonText }]}>Felder bearbeiten</Text>
+          </Pressable>
         </View>
 
         <View style={sectionStyle}>
           <Text style={textStyle}>Wöchentlicher Rückblick</Text>
-          {renderToggleRow('Aktiviert', diarySettings.weekly.enabled, () => handleWeeklyToggle('enabled'))}
-          {renderToggleRow('Automatisch am Sonntag erzeugen', diarySettings.weekly.autoCreate, () => handleWeeklyToggle('autoCreate'))}
-
-          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
-          {diarySettings.weekly.ratingFields.map((field, index) => (
-            <View key={field.id} style={styles.fieldRow}>
-              <View style={styles.fieldHeader}>
-                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
-                <Switch
-                  value={field.enabled}
-                  onValueChange={() => handleFieldToggle('weeklyRating', index)}
-                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
-                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
-                />
-              </View>
-              <TextInput
-                style={inputStyle}
-                value={field.label}
-                onChangeText={(value) => handleFieldLabelChange('weeklyRating', index, value)}
-              />
-            </View>
-          ))}
-
-          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
-          {diarySettings.weekly.textFields.map((field, index) => (
-            <View key={field.id} style={styles.fieldRow}>
-              <View style={styles.fieldHeader}>
-                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
-                <Switch
-                  value={field.enabled}
-                  onValueChange={() => handleFieldToggle('weeklyText', index)}
-                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
-                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
-                />
-              </View>
-              <TextInput
-                style={inputStyle}
-                value={field.label}
-                onChangeText={(value) => handleFieldLabelChange('weeklyText', index, value)}
-              />
-            </View>
-          ))}
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+            {diarySettings.weekly.enabled
+              ? `${activeWeeklyRatingCount} Bewertungen, ${activeWeeklyTextCount} Fragen aktiviert.`
+              : 'Der wöchentliche Rückblick ist derzeit deaktiviert.'}
+          </Text>
+          <Pressable
+            onPress={() => setWeeklyModalVisible(true)}
+            style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.buttonText }]}>Inhalt bearbeiten</Text>
+          </Pressable>
         </View>
 
         <View style={sectionStyle}>
           <Text style={textStyle}>Monatliche Reflexion</Text>
-          {renderToggleRow('Aktiviert', diarySettings.monthly.enabled, () => handleMonthlyToggle('enabled'))}
-          {renderToggleRow('Automatisch am 1. erzeugen', diarySettings.monthly.autoCreate, () => handleMonthlyToggle('autoCreate'))}
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+            {diarySettings.monthly.enabled
+              ? `${activeMonthlyRatingCount} Bewertungen, ${activeMonthlyTextCount} Fragen aktiviert.`
+              : 'Die monatliche Reflexion ist derzeit deaktiviert.'}
+          </Text>
+          <Pressable
+            onPress={() => setMonthlyModalVisible(true)}
+            style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.buttonText }]}>Inhalt bearbeiten</Text>
+          </Pressable>
+        </View>
 
-          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Bewertungen (1-5)</Text>
-          {diarySettings.monthly.ratingFields.map((field, index) => (
-            <View key={field.id} style={styles.fieldRow}>
-              <View style={styles.fieldHeader}>
-                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Bewertung ${index + 1}`}</Text>
-                <Switch
-                  value={field.enabled}
-                  onValueChange={() => handleFieldToggle('monthlyRating', index)}
-                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
-                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
-                />
-              </View>
-              <TextInput
-                style={inputStyle}
-                value={field.label}
-                onChangeText={(value) => handleFieldLabelChange('monthlyRating', index, value)}
-              />
-            </View>
-          ))}
-
-          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freitextfelder</Text>
-          {diarySettings.monthly.textFields.map((field, index) => (
-            <View key={field.id} style={styles.fieldRow}>
-              <View style={styles.fieldHeader}>
-                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>{`Frage ${index + 1}`}</Text>
-                <Switch
-                  value={field.enabled}
-                  onValueChange={() => handleFieldToggle('monthlyText', index)}
-                  trackColor={{ false: theme.surfaceBorder, true: theme.accentSecondary }}
-                  thumbColor={field.enabled ? theme.accent : '#f4f3f4'}
-                />
-              </View>
-              <TextInput
-                style={inputStyle}
-                value={field.label}
-                onChangeText={(value) => handleFieldLabelChange('monthlyText', index, value)}
-              />
-            </View>
-          ))}
+        <View style={sectionStyle}>
+          <Text style={textStyle}>Tagebuch-Vorschau</Text>
+          <Text style={[styles.sectionDescription, { color: theme.textSecondary }]}>
+            Sieh dir einen Beispiel-Eintrag basierend auf deinen aktuellen Einstellungen an.
+          </Text>
+          <Pressable
+            onPress={() => setPreviewModalVisible(true)}
+            style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+          >
+            <Text style={[styles.primaryButtonText, { color: theme.buttonText }]}>Beispiel anzeigen</Text>
+          </Pressable>
         </View>
 
         <View style={sectionStyle}>
@@ -464,53 +616,34 @@ export default function Einstellungen() {
         <View style={sectionStyle}>
           <Text style={textStyle}>To-Do-Schnellzugriff</Text>
           <Text style={[styles.helperText, { color: theme.textSecondary }]}>
-            Lege fest, ob ausgewählte Gruppen für ein Widget oder Schnellzugriff außerhalb der App
-            bereitgestellt werden sollen.
+            Wähle, welche Gruppen im Homescreen-Widget und in anderen Schnellzugriffen außerhalb der App erscheinen sollen.
           </Text>
-          <Text style={[styles.helperNote, { color: theme.textSecondary }]}>
-            Hinweis: In der Expo-Testumgebung stehen Widgets und Statusleisten-Einträge nicht zur Verfügung.
-            Diese Funktion funktioniert erst in einem eigenständig installierten App-Build.
-          </Text>
-          {renderToggleRow('Schnellzugriff aktivieren', quickAccessSettings.enabled, toggleQuickAccessEnabled)}
-          <View
-            style={quickAccessSettings.enabled ? null : styles.disabledBlock}
-            pointerEvents={quickAccessSettings.enabled ? 'auto' : 'none'}
-          >
-            {renderToggleRow(
-              'Für Homescreen-Widget vorbereiten',
-              quickAccessSettings.widgetEnabled,
-              () => toggleQuickAccessOption('widgetEnabled'),
-            )}
-            {renderToggleRow(
-              'Für Statusleiste vorbereiten',
-              quickAccessSettings.statusBarEnabled,
-              () => toggleQuickAccessOption('statusBarEnabled'),
-            )}
-            <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freigegebene Gruppen</Text>
-            {groups
-              .sort((a, b) => a.order - b.order)
-              .map((group) => {
-                const groupName = group.name || 'Allgemein';
-                return (
-                  <Pressable
-                    key={`quick-${groupName}`}
-                    onPress={() => toggleQuickAccessGroup(groupName)}
-                    disabled={!quickAccessSettings.enabled}
-                  >
-                    <View style={styles.option}>
-                      <Checkbox
-                        style={styles.checkbox}
-                        value={!!quickAccessSettings.groupVisibility[groupName]}
-                        onValueChange={() => toggleQuickAccessGroup(groupName)}
-                        color={quickAccessSettings.groupVisibility[groupName] ? theme.accent : undefined}
-                        disabled={!quickAccessSettings.enabled}
-                      />
-                      <Text style={paragraphStyle}>{groupName}</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-          </View>
+          <Text style={[styles.helperNote, { color: theme.textSecondary }]}>Das Homescreen-Widget ist immer aktiv.</Text>
+          <Text style={[styles.helperNote, { color: theme.textSecondary }]}>Hinweis: In der Expo-Testumgebung stehen Widgets und Statusleisten-Einträge nicht zur Verfügung. Diese Funktion funktioniert erst in einem eigenständig installierten App-Build.</Text>
+          {renderToggleRow(
+            'Für Statusleiste vorbereiten',
+            quickAccessSettings.statusBarEnabled,
+            () => toggleQuickAccessOption('statusBarEnabled'),
+          )}
+          <Text style={[styles.fieldSectionTitle, { color: theme.textSecondary }]}>Freigegebene Gruppen</Text>
+          {groups
+            .sort((a, b) => a.order - b.order)
+            .map((group) => {
+              const groupName = group.name || 'Allgemein';
+              return (
+                <Pressable key={`quick-${groupName}`} onPress={() => toggleQuickAccessGroup(groupName)}>
+                  <View style={styles.option}>
+                    <Checkbox
+                      style={styles.checkbox}
+                      value={!!quickAccessSettings.groupVisibility[groupName]}
+                      onValueChange={() => toggleQuickAccessGroup(groupName)}
+                      color={quickAccessSettings.groupVisibility[groupName] ? theme.accent : undefined}
+                    />
+                    <Text style={paragraphStyle}>{groupName}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
         </View>
 
         <View style={sectionStyle}>
@@ -552,6 +685,106 @@ export default function Einstellungen() {
           </Pressable>
         </View>
       </ScrollView>
+      <Modal
+        visible={dailyModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setDailyModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}> 
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Tägliche Eingabefelder</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderDailyEditorContent()}
+            </ScrollView>
+            <Pressable
+              onPress={() => setDailyModalVisible(false)}
+              style={[styles.modalCloseButton, { backgroundColor: theme.accent }]}
+            >
+              <Text style={[styles.modalCloseButtonText, { color: theme.buttonText }]}>Fertig</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={weeklyModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setWeeklyModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}> 
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Wöchentlicher Rückblick</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderWeeklyEditorContent()}
+            </ScrollView>
+            <Pressable
+              onPress={() => setWeeklyModalVisible(false)}
+              style={[styles.modalCloseButton, { backgroundColor: theme.accent }]}
+            >
+              <Text style={[styles.modalCloseButtonText, { color: theme.buttonText }]}>Fertig</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={monthlyModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMonthlyModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}> 
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Monatliche Reflexion</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderMonthlyEditorContent()}
+            </ScrollView>
+            <Pressable
+              onPress={() => setMonthlyModalVisible(false)}
+              style={[styles.modalCloseButton, { backgroundColor: theme.accent }]}
+            >
+              <Text style={[styles.modalCloseButtonText, { color: theme.buttonText }]}>Fertig</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={previewModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}> 
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Beispiel-Tagebucheintrag</Text>
+            <View style={styles.modalPreviewContainer}>{renderDiaryPreviewContent()}</View>
+            <Pressable
+              onPress={() => setPreviewModalVisible(false)}
+              style={[styles.modalCloseButton, { backgroundColor: theme.accent }]}
+            >
+              <Text style={[styles.modalCloseButtonText, { color: theme.buttonText }]}>Schließen</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -671,10 +904,106 @@ const styles = StyleSheet.create({
   helperNote: {
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: 'center',
   },
-  disabledBlock: {
-    opacity: 0.5,
+  sectionDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  primaryButton: {
+    marginTop: 4,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalScroll: {
+    maxHeight: 360,
+    marginTop: 8,
+  },
+  modalScrollContent: {
+    paddingBottom: 20,
+    gap: 12,
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalPreviewContainer: {
+    marginTop: 8,
+    maxHeight: 420,
+    width: '100%',
+    flexGrow: 1,
+  },
+  previewScroll: {
+    maxHeight: 360,
+    paddingHorizontal: 4,
+  },
+  previewContent: {
+    paddingBottom: 20,
+    gap: 16,
+  },
+  previewDate: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  previewSection: {
+    gap: 12,
+  },
+  previewSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  previewItem: {
+    gap: 6,
+  },
+  previewLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  previewInputLine: {
+    borderWidth: 1,
+    borderRadius: 8,
+    height: 38,
+  },
+  previewHint: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  previewScale: {
+    fontSize: 14,
+    letterSpacing: 6,
   },
 });

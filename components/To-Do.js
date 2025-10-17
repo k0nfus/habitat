@@ -110,11 +110,12 @@ export default function ToDo() {
       const raw = await AsyncStorage.getItem(QUICK_ACCESS_STORAGE_KEY);
       if (!groups.length) {
         const normalized = raw ? { ...defaultQuickAccessSettings, ...JSON.parse(raw) } : defaultQuickAccessSettings;
-        setQuickAccessSettings(normalized);
+        setQuickAccessSettings({ ...normalized, enabled: true, widgetEnabled: true });
       } else {
         const { settings } = alignQuickAccessGroups(raw ? JSON.parse(raw) : defaultQuickAccessSettings, groups);
-        setQuickAccessSettings(settings);
-        await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
+        const normalized = { ...settings, enabled: true, widgetEnabled: true };
+        setQuickAccessSettings(normalized);
+        await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(normalized));
       }
     } catch (error) {
       console.error('Fehler beim Laden der Schnellzugriff-Einstellungen', error);

@@ -467,7 +467,7 @@ export default function Tagebuch() {
         />
       </View>
 
-      <View style={[styles.buttonview, { paddingBottom: 16 + insets.bottom }]}>
+      <View style={[styles.buttonview, { paddingBottom: 0  }]}>
         <AddButton onPress={handleNewEntry} title="Neuer Eintrag" />
       </View>
 

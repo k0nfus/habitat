@@ -19,6 +19,7 @@ import {
   QUICK_ACCESS_STORAGE_KEY,
   alignQuickAccessGroups,
 } from '../constants/todoQuickAccessDefaults';
+import { syncTodoWidgetFromStorage } from '../utils/todoWidget';
 
 const SETTINGS_STORAGE_KEY = 'diarySettings';
 
@@ -141,6 +142,9 @@ export default function Einstellungen() {
       if (changed) {
         AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settings));
       }
+      syncTodoWidgetFromStorage(settings).catch((error) =>
+        console.warn('Widget konnte nicht aktualisiert werden', error)
+      );
       return settings;
     });
   };
@@ -160,6 +164,9 @@ export default function Einstellungen() {
   const persistQuickAccessSettings = async (settingsToSave) => {
     setQuickAccessSettings(settingsToSave);
     await AsyncStorage.setItem(QUICK_ACCESS_STORAGE_KEY, JSON.stringify(settingsToSave));
+    syncTodoWidgetFromStorage(settingsToSave).catch((error) =>
+      console.warn('Widget konnte nicht aktualisiert werden', error)
+    );
   };
 
   const toggleQuickAccessEnabled = async () => {

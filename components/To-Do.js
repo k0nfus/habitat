@@ -20,6 +20,7 @@ import {
   QUICK_ACCESS_STORAGE_KEY,
   alignQuickAccessGroups,
 } from '../constants/todoQuickAccessDefaults';
+import { syncTodoWidgetState } from '../utils/todoWidget';
 
 export default function ToDo() {
   const { theme } = useTheme();
@@ -44,6 +45,11 @@ export default function ToDo() {
       setSelectedGroup(groups[0]?.name || 'Allgemein');
     }
   }, [groups]);
+
+  useEffect(() => {
+    if (!groups.length) return;
+    syncTodoWidgetState(todoList, quickAccessSettings, groups);
+  }, [todoList, quickAccessSettings, groups]);
 
   const loadGroups = async () => {
     try {

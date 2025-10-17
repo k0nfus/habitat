@@ -135,21 +135,23 @@ class TodoWidgetModule : Module() {
     Name("TodoWidget")
 
     AsyncFunction("setWidgetState") { json: String? ->
-      val context = getApplicationContext() ?: return@AsyncFunction
-      TodoWidgetProvider.storeState(context, json)
-      TodoWidgetProvider.updateAllWidgets(context)
+      val applicationContext = getApplicationContext() ?: return@AsyncFunction null
+      TodoWidgetProvider.storeState(applicationContext, json)
+      TodoWidgetProvider.updateAllWidgets(applicationContext)
+      return@AsyncFunction null
     }
 
     AsyncFunction("clearWidgetState") {
-      val context = getApplicationContext() ?: return@AsyncFunction
-      TodoWidgetProvider.storeState(context, null)
-      TodoWidgetProvider.updateAllWidgets(context)
+      val applicationContext = getApplicationContext() ?: return@AsyncFunction null
+      TodoWidgetProvider.storeState(applicationContext, null)
+      TodoWidgetProvider.updateAllWidgets(applicationContext)
+      return@AsyncFunction null
     }
 
     AsyncFunction("hasWidgets") {
-      val context = getApplicationContext() ?: return@AsyncFunction false
-      val manager = AppWidgetManager.getInstance(context)
-      val component = ComponentName(context, TodoWidgetProvider::class.java)
+      val applicationContext = getApplicationContext() ?: return@AsyncFunction false
+      val manager = AppWidgetManager.getInstance(applicationContext)
+      val component = ComponentName(applicationContext, TodoWidgetProvider::class.java)
       val ids = manager.getAppWidgetIds(component)
       ids != null && ids.isNotEmpty()
     }
